@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    if (QFile::exists(qApp->applicationDirPath() + BASE_ROM))
+    if (!QFile::exists(qApp->applicationDirPath() + "/" BASE_ROM))
     {
         QMessageBox::warning(NULL, "Error", "You need a base.gb in the editor's directory!");
         return 1;
