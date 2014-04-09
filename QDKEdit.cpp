@@ -218,12 +218,6 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
     quint8 byte, flag;
 
-    // set level palette
-    levels[id].lvlPalette[0] = Qt::white;
-    levels[id].lvlPalette[1] = Qt::black;
-    levels[id].lvlPalette[2] = Qt::yellow;
-    levels[id].lvlPalette[3] = Qt::red;
-
     src->seek(levels[id].offset);
 
     in >> levels[id].size;
@@ -362,19 +356,19 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     }
 
     if (id < 4)
-        levels[id].pal = id;
+        levels[id].paletteIndex = id;
     else
     {
         src->seek(PAL_TABELLE + (id-4)*8);
         in >> byte;
-        levels[id].pal = byte;
+        levels[id].paletteIndex = byte;
     }
-    levels[id].pal += 0x180;
+    levels[id].paletteIndex += 0x180;
 
-    if (levels[id].pal >= 0x200)
+    if (levels[id].paletteIndex >= 0x200)
     {
-        qWarning() << QString("Level %1: invalid SGB palette 0x%2! default to 0x180").arg(id).arg(levels[id].pal, 4, 16, QChar('0'));
-        levels[id].pal = 0x180;
+        qWarning() << QString("Level %1: invalid SGB palette 0x%2! default to 0x180").arg(id).arg(levels[id].paletteIndex, 4, 16, QChar('0'));
+        levels[id].paletteIndex = 0x180;
     }
 
     levels[id].fullDataUpToDate = true;
@@ -833,6 +827,7 @@ bool QDKEdit::createTileSets(QFile *src, QGBPalette palette)
     in.setByteOrder(QDataStream::LittleEndian);
 
     quint8 firstSet, secondSet;
+    quint8 tmp;
     quint16 pointer;
     quint32 offset;
 
@@ -848,6 +843,12 @@ bool QDKEdit::createTileSets(QFile *src, QGBPalette palette)
 
     for (int id = 0; id < MAX_TILESETS; id++)
     {
+        tmp = id & 0x0F;
+        if ((id == 0x20) || (tmp == 0x02) || (tmp == 0x0C) || (tmp == 0x0E))
+            tilesetBGP[id] = 0x6C;
+        else
+            tilesetBGP[id] = 0x9C;
+
         if (QFile::exists(QString("tiles/tileset_%1.png").arg(id, 2, 16, QChar('0'))))
         {
             tilesets[id].load(QString("tiles/tileset_%1.png").arg(id, 2, 16, QChar('0')));
@@ -1084,10 +1085,14 @@ void QDKEdit::changeLevel(int id)
         setLevelDimension(32, 28);
 
     // adjust color table
-    tilesets[levels[currentLevel].tileset].setColor(0, sgbPal[levels[currentLevel].pal][0].rgb());
-    tilesets[levels[currentLevel].tileset].setColor(3, sgbPal[levels[currentLevel].pal][1].rgb());
-    tilesets[levels[currentLevel].tileset].setColor(2, sgbPal[levels[currentLevel].pal][2].rgb());
-    tilesets[levels[currentLevel].tileset].setColor(1, sgbPal[levels[currentLevel].pal][3].rgb());
+    quint8 mask;
+    quint8 bgp = tilesetBGP[levels[currentLevel].tileset];
+    for (int i = 0; i < 4; i++)
+    {
+        mask = bgp & 0x03;
+        bgp >>= 2;
+        tilesets[levels[currentLevel].tileset].setColor(i, sgbPal[levels[currentLevel].paletteIndex][mask].rgb());
+    }
 
     tileSet.convertFromImage(tilesets[levels[currentLevel].tileset]);
 
@@ -1122,7 +1127,7 @@ QString QDKEdit::getLevelInfo()
     QString str = "";
     int id = currentLevel;
 
-    str += QString("Size %1; Tileset %2; Music %3; Time %4; full size %5; Palette: 0x%6").arg(levels[id].size, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')).arg(levels[id].music, 2, 16, QChar('0')).arg(levels[id].time).arg(levels[id].fullData.size()).arg(levels[id].pal, 4, 16, QChar('0'));
+    str += QString("Size %1; Tileset %2; Music %3; Time %4; full size %5; Palette: 0x%6").arg(levels[id].size, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')).arg(levels[id].music, 2, 16, QChar('0')).arg(levels[id].time).arg(levels[id].fullData.size()).arg(levels[id].paletteIndex, 4, 16, QChar('0'));
 
     if (!levels[id].switchData)
         str += QString("; No switch data");

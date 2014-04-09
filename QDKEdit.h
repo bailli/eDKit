@@ -23,10 +23,10 @@
 #define MAX_SPRITES 0x1B
 #define POINTER_TABLE 0x14000
 #define SGB_SYSTEM_PAL 0x786F0 // decompressed size 0x1000
-// the SGB packet is always 51.(quint16)lvlNum+0x80.E4 00.E5.00.E6 00.C1.00.00 00.00.00.00
-// it is not the level number...
+// the SGB packet is always 51.(quint16)var+0x80.E4 00.E5.00.E6 00.C1.00.00 00.00.00.00
 // asm @ 0x0E70
 #define PAL_TABELLE 0x6093b
+// BGP depends on tileset asm @ 0E9D
 
 struct QDKSprite : QSprite
 {
@@ -54,9 +54,7 @@ struct QDKLevel
 
     QByteArray rawTilemap;
     QByteArray displayTilemap;
-
-    QGBPalette lvlPalette;
-    quint16 pal;
+    quint16 paletteIndex;
 
     QList<QDKSprite> sprites;
 
@@ -101,6 +99,7 @@ private:
 
     QDKLevel levels[MAX_LEVEL_ID];
     QImage tilesets[MAX_TILESETS];
+    quint8 tilesetBGP[MAX_TILESETS];
     QTileInfo tiles[256];
     QGBPalette sgbPal[512];
     int currentLevel;
