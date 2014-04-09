@@ -1,6 +1,7 @@
 #include "QDKEdit.h"
 #include <QtCore/QDebug>
 #include "MainWindow.h"
+#include "QTileSelector.h"
 #include <QtCore/QDir>
 
 QDKEdit::QDKEdit(QWidget *parent) :
@@ -37,6 +38,7 @@ QDKEdit::QDKEdit(QWidget *parent) :
     baseRom.open(QIODevice::ReadOnly);
     getTileInfo(&baseRom);
     createTileSets(&baseRom, palette);
+    readSGBPalettes(&baseRom);
     baseRom.close();
 
     loadTileSet("tiles/tileset_00.png", 0xFF, 704);
@@ -359,10 +361,75 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         levels[id].fullData.append(byte);
     }
 
+    if (id < 4)
+        levels[id].pal = id;
+    else
+    {
+        src->seek(PAL_TABELLE + (id-4)*8);
+        in >> byte;
+        levels[id].pal = byte;
+    }
+    levels[id].pal += 0x180;
+
+    if (levels[id].pal >= 0x200)
+    {
+        qWarning() << QString("Level %1: invalid SGB palette 0x%2! default to 0x180").arg(id).arg(levels[id].pal, 4, 16, QChar('0'));
+        levels[id].pal = 0x180;
+    }
+
     levels[id].fullDataUpToDate = true;
 
     if ((quint8)levels[id].fullData[size-1] != (quint8)0x00)
         qWarning() << QString("Level %1: last byte of raw data is not 0x00! byte %2; size %3").arg(id).arg(levels[id].fullData[size-1], 2, 16, QChar('0')).arg(size);
+
+    return true;
+}
+
+bool QDKEdit::readSGBPalettes(QFile *src)
+{
+    src->seek(SGB_SYSTEM_PAL);
+    QDataStream in(src);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    quint16 color;
+    int rgb;
+    QColor tmp;
+
+//    Bit 0-4   - Red Intensity   (0-31)
+//    Bit 5-9   - Green Intensity (0-31)
+//    Bit 10-14 - Blue Intensity  (0-31)
+//    Bit 15    - Not used (zero)
+
+    QByteArray decompressed = LZSSDecompress(&in, 0x1000);
+
+    QFile file("sgb.raw");
+    file.open(QIODevice::WriteOnly);
+    file.write(decompressed);
+    file.close();
+
+    QDataStream pal(decompressed);
+    pal.setByteOrder(QDataStream::LittleEndian);
+
+    for (int i = 0; i < 512; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            pal >> color;
+            rgb = (color & 0x1F)* 8;
+            if (rgb == 248)
+                rgb = 255;
+            tmp.setRed(rgb);
+            rgb = ((color >> 5) & 0x1F) * 8;
+            if (rgb == 248)
+                rgb = 255;
+            tmp.setGreen(rgb);
+            rgb = ((color >> 10) & 0x1F) * 8;
+            if (rgb == 248)
+                rgb = 255;
+            tmp.setBlue(rgb);
+            sgbPal[i][j] = tmp;
+        }
+    }
 
     return true;
 }
@@ -1017,12 +1084,15 @@ void QDKEdit::changeLevel(int id)
         setLevelDimension(32, 28);
 
     // adjust color table
-    tilesets[levels[currentLevel].tileset].setColor(0, levels[id].lvlPalette[0].rgb());
-    tilesets[levels[currentLevel].tileset].setColor(1, levels[id].lvlPalette[1].rgb());
-    tilesets[levels[currentLevel].tileset].setColor(2, levels[id].lvlPalette[2].rgb());
-    tilesets[levels[currentLevel].tileset].setColor(3, levels[id].lvlPalette[3].rgb());
+    tilesets[levels[currentLevel].tileset].setColor(0, sgbPal[levels[currentLevel].pal][0].rgb());
+    tilesets[levels[currentLevel].tileset].setColor(3, sgbPal[levels[currentLevel].pal][1].rgb());
+    tilesets[levels[currentLevel].tileset].setColor(2, sgbPal[levels[currentLevel].pal][2].rgb());
+    tilesets[levels[currentLevel].tileset].setColor(1, sgbPal[levels[currentLevel].pal][3].rgb());
 
     tileSet.convertFromImage(tilesets[levels[currentLevel].tileset]);
+
+    if (selector)
+        selector->changeTilePixmap(tileSet);
 
     sprites.clear();
     for (int i = 0; i < levels[currentLevel].sprites.size(); i++)
@@ -1052,7 +1122,7 @@ QString QDKEdit::getLevelInfo()
     QString str = "";
     int id = currentLevel;
 
-    str += QString("Size %1; Tileset %2; Music %3; Time %4; full size %5").arg(levels[id].size, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')).arg(levels[id].music, 2, 16, QChar('0')).arg(levels[id].time).arg(levels[id].fullData.size());
+    str += QString("Size %1; Tileset %2; Music %3; Time %4; full size %5; Palette: 0x%6").arg(levels[id].size, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')).arg(levels[id].music, 2, 16, QChar('0')).arg(levels[id].time).arg(levels[id].fullData.size()).arg(levels[id].pal, 4, 16, QChar('0'));
 
     if (!levels[id].switchData)
         str += QString("; No switch data");

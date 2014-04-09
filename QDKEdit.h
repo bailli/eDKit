@@ -22,6 +22,11 @@
 #define MAX_TILESETS 0x22
 #define MAX_SPRITES 0x1B
 #define POINTER_TABLE 0x14000
+#define SGB_SYSTEM_PAL 0x786F0 // decompressed size 0x1000
+// the SGB packet is always 51.(quint16)lvlNum+0x80.E4 00.E5.00.E6 00.C1.00.00 00.00.00.00
+// it is not the level number...
+// asm @ 0x0E70
+#define PAL_TABELLE 0x6093b
 
 struct QDKSprite : QSprite
 {
@@ -51,6 +56,7 @@ struct QDKLevel
     QByteArray displayTilemap;
 
     QGBPalette lvlPalette;
+    quint16 pal;
 
     QList<QDKSprite> sprites;
 
@@ -85,6 +91,7 @@ private:
     QByteArray LZSSDecompress(QDataStream *in, quint16 decompressedSize);
     QByteArray LZSSCompress(QByteArray *src);
     bool readLevel(QFile *src, quint8 id);
+    bool readSGBPalettes(QFile *src);
     bool recompressLevel(quint8 id);
     bool expandRawTilemap(quint8 id);
     bool updateRawTilemap(quint8 id);
@@ -95,6 +102,7 @@ private:
     QDKLevel levels[MAX_LEVEL_ID];
     QImage tilesets[MAX_TILESETS];
     QTileInfo tiles[256];
+    QGBPalette sgbPal[512];
     int currentLevel;
     bool romLoaded;
 

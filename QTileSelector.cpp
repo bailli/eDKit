@@ -16,6 +16,12 @@ QTileSelector::QTileSelector(QWidget *parent) :
     //setMouseTracking(true);
 }
 
+void QTileSelector::changeTilePixmap(QPixmap tilePixmap)
+{
+    tiles = tilePixmap;
+    updateImage();
+}
+
 void QTileSelector::setTilePixmap(QPixmap tilePixmap, QSize size, float scale, int count, QStringList names)
 {
     tiles = tilePixmap;

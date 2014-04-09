@@ -39,6 +39,7 @@ signals:
 
 public slots:
     void setTilePixmap(QPixmap tilePixmap, QSize size, float scale, int count, QStringList names);
+    void changeTilePixmap(QPixmap tilePixmap);
 };
 
 #endif // QTILESELECTOR_H
