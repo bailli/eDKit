@@ -4,8 +4,8 @@
 #include <QtCore/QFile>
 #include <QtCore/QDataStream>
 #include <QtCore/QDebug>
-#include <QtGui/QMessageBox>
-#include <QtGui/QFileDialog>
+#include <QMessageBox>
+#include <QFileDialog>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
