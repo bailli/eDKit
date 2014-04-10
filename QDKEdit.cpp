@@ -1108,20 +1108,6 @@ void QDKEdit::changeLevel(int id)
     emit dataChanged();
 }
 
-void QDKEdit::morePaint(QPainter *painter)
-{
-    // paint all sprites as black box
-    //if (drawSprites)
-        for (int i = 0; i < levels[currentLevel].sprites.size(); i++)
-        {
-            int x,y;
-            x = levels[currentLevel].sprites.at(i).levelPos % 32;
-            y = levels[currentLevel].sprites.at(i).levelPos / 32;
-            painter->setBrush(Qt::black);
-            painter->drawRect(tileSize.width()*x, tileSize.height()*y, 8, 8);
-        }
-}
-
 QString QDKEdit::getLevelInfo()
 {
     QString str = "";

@@ -14,11 +14,11 @@ SOURCES += main.cpp\
         MainWindow.cpp\
         QTileEdit.cpp\
         QTileSelector.cpp\
-    QDKEdit.cpp
+        QDKEdit.cpp
 
 HEADERS  += MainWindow.h\
         QTileEdit.h\
         QTileSelector.h\
-    QDKEdit.h
+        QDKEdit.h
 
 FORMS    += MainWindow.ui

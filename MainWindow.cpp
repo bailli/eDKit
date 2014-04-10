@@ -35,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->lvlEdit->changeLevel(0);
         ui->lvlInfo->setPlainText(ui->lvlEdit->getLevelInfo());
     }
+    ui->spbLevel->setFocus();
 }
 
 void MainWindow::updateText()

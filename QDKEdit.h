@@ -104,9 +104,6 @@ private:
     QGBPalette sgbPal[512];
     int currentLevel;
     bool romLoaded;
-
-    //void paintEvent(QPaintEvent *e);
-    void morePaint(QPainter *painter);
     
 signals:
 

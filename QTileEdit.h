@@ -46,9 +46,6 @@ protected:
     void setTile(int x, int y, int tileNumber);
     void setTile(int offset, int tileNumber);
 
-    //virtual void lessPaint(QPainter *painter) { ; }
-    //virtual void morePaint(QPainter *painter) { ; }
-
     QVector<QSprite> sprites;
     QByteArray lvlData;
     int lvlDataStart;

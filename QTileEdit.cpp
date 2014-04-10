@@ -172,9 +172,6 @@ void QTileEdit::paintEvent(QPaintEvent *e)
     //QPainter painter(this);
     painter.drawImage(QRect(0, 0, orgSize.width(), orgSize.height()), background);
 
-    //additional drawing between background and before tilemap
-    //lessPaint(&painter);
-
     //draw tiles
     painter.setBackgroundMode(Qt::TransparentMode);
     int tileNumber;
@@ -209,9 +206,6 @@ void QTileEdit::paintEvent(QPaintEvent *e)
     //draw selection
     painter.setPen(Qt::gray);
     painter.drawRect(mouseOverTile.x(), mouseOverTile.y(), mouseOverTile.width(), mouseOverTile.height());
-
-    //additional drawing to finish up
-    //morePaint(&painter);
 
     painter.end();
 
