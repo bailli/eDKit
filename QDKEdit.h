@@ -96,6 +96,7 @@ private:
     void copyTileToSet(QFile *src, quint32 offset, QImage *img, quint16 tileID, bool compressed, quint8 tileCount, quint16 superOffset);
     bool getTileInfo(QFile *src);
     bool createTileSets(QFile *src, QGBPalette palette);
+    void updateTileset();
 
     QDKLevel levels[MAX_LEVEL_ID];
     QImage tilesets[MAX_TILESETS];
@@ -106,12 +107,22 @@ private:
     bool romLoaded;
     
 signals:
+    void paletteChanged(int palette);
+    void tilesetChanged(int set);
+    void timeChanged(int time);
+    void musicChanged(int music);
+    void sizeChanged(int size);
 
 private slots:
     void checkForLargeTile(int x, int y);
     
 public slots:
     void changeLevel(int id);
+    void changeTime(int time);
+    void changePalette(int palette);
+    void changeTileset(int tileset);
+    void changeMusic(int music);
+    void changeSize(int size);
     
 };
 

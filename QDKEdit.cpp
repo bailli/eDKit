@@ -1050,6 +1050,77 @@ QByteArray QDKEdit::LZSSCompress(QByteArray *src)
     return compressed;
 }
 
+void QDKEdit::updateTileset()
+{
+    // adjust color table
+    quint8 mask;
+    quint8 bgp = tilesetBGP[levels[currentLevel].tileset];
+    for (int i = 0; i < 4; i++)
+    {
+        mask = bgp & 0x03;
+        bgp >>= 2;
+        tilesets[levels[currentLevel].tileset].setColor(i, sgbPal[levels[currentLevel].paletteIndex][mask].rgb());
+    }
+
+    tileSet.convertFromImage(tilesets[levels[currentLevel].tileset]);
+
+    if (selector)
+        selector->changeTilePixmap(tileSet);
+}
+
+void QDKEdit::changeMusic(int music)
+{
+    if ((music >= 0) && (music <= 0x23) && (music != levels[currentLevel].music))
+    {
+        levels[currentLevel].music = music;
+        dataIsChanged = true;
+
+        emit musicChanged(music);
+    }
+}
+
+void QDKEdit::changePalette(int palette)
+{
+    if ((palette >= 0x180) && (palette <= 511) && (palette != levels[currentLevel].paletteIndex))
+    {
+        levels[currentLevel].paletteIndex = palette;
+        dataIsChanged = true;
+
+        updateTileset();
+        update();
+        emit paletteChanged(palette);
+    }
+}
+
+void QDKEdit::changeSize(int size)
+{
+
+}
+
+void QDKEdit::changeTileset(int tileset)
+{
+    if ((tileset >= 0) && (tileset < MAX_TILESETS) && (tileset != levels[currentLevel].tileset))
+    {
+        levels[currentLevel].tileset = tileset;
+        dataIsChanged = true;
+
+        updateTileset();
+        update();
+        emit tilesetChanged(tileset);
+    }
+}
+
+void QDKEdit::changeTime(int time)
+{
+    if ((time >= 0) && (time <= 999) && (time != levels[currentLevel].time))
+    {
+        levels[currentLevel].time = time;
+        dataIsChanged = true;
+
+        emit changeTime(time);
+    }
+}
+
 void QDKEdit::changeLevel(int id)
 {
     if (!romLoaded)
@@ -1084,20 +1155,7 @@ void QDKEdit::changeLevel(int id)
     else
         setLevelDimension(32, 28);
 
-    // adjust color table
-    quint8 mask;
-    quint8 bgp = tilesetBGP[levels[currentLevel].tileset];
-    for (int i = 0; i < 4; i++)
-    {
-        mask = bgp & 0x03;
-        bgp >>= 2;
-        tilesets[levels[currentLevel].tileset].setColor(i, sgbPal[levels[currentLevel].paletteIndex][mask].rgb());
-    }
-
-    tileSet.convertFromImage(tilesets[levels[currentLevel].tileset]);
-
-    if (selector)
-        selector->changeTilePixmap(tileSet);
+    updateTileset();
 
     sprites.clear();
     for (int i = 0; i < levels[currentLevel].sprites.size(); i++)
@@ -1106,6 +1164,11 @@ void QDKEdit::changeLevel(int id)
     update();
 
     emit dataChanged();
+    emit paletteChanged(levels[currentLevel].paletteIndex);
+    emit tilesetChanged(levels[currentLevel].tileset);
+    emit timeChanged(levels[currentLevel].time);
+    emit musicChanged(levels[currentLevel].music);
+    emit sizeChanged(levels[currentLevel].size);
 }
 
 QString QDKEdit::getLevelInfo()

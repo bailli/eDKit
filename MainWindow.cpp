@@ -19,9 +19,22 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->spbLevel, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeLevel(int)));
     connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(updateText()));
+    //connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(updateGUI()));
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), ui->lvlEdit, SLOT(toggleSpriteMode(int)));
     connect(ui->actionOpen_ROM, SIGNAL(triggered()), this, SLOT(loadROM()));
     connect(ui->actionSave_ROM, SIGNAL(triggered()), this, SLOT(SaveROM()));
+
+    connect(ui->lvlEdit, SIGNAL(musicChanged(int)), ui->cmbMusic, SLOT(setCurrentIndex(int)));
+    connect(ui->lvlEdit, SIGNAL(paletteChanged(int)), ui->spbPalette, SLOT(setValue(int)));
+    connect(ui->lvlEdit, SIGNAL(sizeChanged(int)), ui->cmbSize, SLOT(setCurrentIndex(int)));
+    connect(ui->lvlEdit, SIGNAL(tilesetChanged(int)), ui->cmbTileset, SLOT(setCurrentIndex(int)));
+    connect(ui->lvlEdit, SIGNAL(timeChanged(int)), ui->spbTime, SLOT(setValue(int)));
+
+    connect(ui->cmbSize, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeSize(int)));
+    connect(ui->cmbMusic, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeMusic(int)));
+    connect(ui->cmbTileset, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeTileset(int)));
+    connect(ui->spbPalette, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changePalette(int)));
+    connect(ui->spbTime, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeTime(int)));
 
     if ((qApp->arguments().size() > 1) && (QFile::exists(qApp->arguments().at(1))))
     {
@@ -60,11 +73,7 @@ void MainWindow::SaveROM()
     QString file = QFileDialog::getSaveFileName(0, "Select Donkey Kong (GB) ROM", qApp->applicationDirPath(), "Donkey Kong (GB) ROM (*.gb)");
 
     if (!QFile::exists(file))
-    {
-        qDebug() << file;
         QFile::copy(qApp->applicationDirPath() + BASE_ROM, file);
-        qDebug() << "here2";
-    }
 
     ui->lvlEdit->saveAllLevels(file);
 }
