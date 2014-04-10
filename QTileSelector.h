@@ -1,7 +1,7 @@
 #ifndef QTILESELECTOR_H
 #define QTILESELECTOR_H
 
-#include <QtGui/QWidget>
+#include <QWidget>
 
 class QTileSelector : public QWidget
 {
