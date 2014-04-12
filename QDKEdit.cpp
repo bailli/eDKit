@@ -124,6 +124,20 @@ bool QDKEdit::saveAllLevels(QString romFile)
         }
     }
 
+    //write SGB palettes for all levels
+    for (int i = 0; i < LAST_LEVEL; i++)
+        if (i < 4) // this may cause the game to freeze for "high" palette values !
+        {
+            rom.seek(PAL_ARCADE + (i * 6));
+            out << (quint8)(levels[i].paletteIndex - 0x180 + 0xC8);
+        }
+        else
+        {
+            rom.seek(PAL_TABLE + ((i-4) * 6));
+            out << (quint8)(levels[i].paletteIndex - 0x180);
+        }
+
+
     // write new pointers back to the table
     rom.seek(POINTER_TABLE);
     for (int i = 0; i < LAST_LEVEL; i++)
@@ -356,14 +370,18 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     }
 
     if (id < 4)
-        levels[id].paletteIndex = id;
+    {
+        src->seek(PAL_ARCADE + (id * 6));
+        in >> byte;
+        byte -= 0xC8;
+    }
     else
     {
-        src->seek(PAL_TABELLE + (id-4)*8);
+        src->seek(PAL_TABLE + (id-4)*8);
         in >> byte;
-        levels[id].paletteIndex = byte;
     }
-    levels[id].paletteIndex += 0x180;
+
+    levels[id].paletteIndex = 0x180 + byte;
 
     if (levels[id].paletteIndex >= 0x200)
     {
@@ -395,11 +413,6 @@ bool QDKEdit::readSGBPalettes(QFile *src)
 //    Bit 15    - Not used (zero)
 
     QByteArray decompressed = LZSSDecompress(&in, 0x1000);
-
-    QFile file("sgb.raw");
-    file.open(QIODevice::WriteOnly);
-    file.write(decompressed);
-    file.close();
 
     QDataStream pal(decompressed);
     pal.setByteOrder(QDataStream::LittleEndian);
@@ -1054,15 +1067,15 @@ void QDKEdit::updateTileset()
 {
     // adjust color table
     quint8 mask;
-    quint8 bgp = tilesetBGP[levels[currentLevel].tileset];
+    quint8 bgp = tilesetBGP[currentTileset];
     for (int i = 0; i < 4; i++)
     {
         mask = bgp & 0x03;
         bgp >>= 2;
-        tilesets[levels[currentLevel].tileset].setColor(i, sgbPal[levels[currentLevel].paletteIndex][mask].rgb());
+        tilesets[currentTileset].setColor(i, sgbPal[currentPalIndex][mask].rgb());
     }
 
-    tileSet.convertFromImage(tilesets[levels[currentLevel].tileset]);
+    tileSet.convertFromImage(tilesets[currentTileset]);
 
     if (selector)
         selector->changeTilePixmap(tileSet);
@@ -1070,9 +1083,9 @@ void QDKEdit::updateTileset()
 
 void QDKEdit::changeMusic(int music)
 {
-    if ((music >= 0) && (music <= 0x23) && (music != levels[currentLevel].music))
+    if ((music >= 0) && (music <= 0x23) && (music != currentMusic))
     {
-        levels[currentLevel].music = music;
+        currentMusic = music;
         dataIsChanged = true;
 
         emit musicChanged(music);
@@ -1081,9 +1094,9 @@ void QDKEdit::changeMusic(int music)
 
 void QDKEdit::changePalette(int palette)
 {
-    if ((palette >= 0x180) && (palette <= 511) && (palette != levels[currentLevel].paletteIndex))
+    if ((palette >= 0x180) && (palette <= 511) && (palette != currentPalIndex))
     {
-        levels[currentLevel].paletteIndex = palette;
+        currentPalIndex = palette;
         dataIsChanged = true;
 
         updateTileset();
@@ -1094,14 +1107,41 @@ void QDKEdit::changePalette(int palette)
 
 void QDKEdit::changeSize(int size)
 {
+    if ((size >= 0) && (size <= 4) && (size != currentSize))
+    {
+        currentSize = size;
+        dataIsChanged = true;
+        int oldLength = lvlDataLength;
 
+        if (size == 0x00)
+        {
+            setLevelDimension(32, 18);
+            lvlDataLength = 32*18*2;
+        }
+        else
+        {
+            setLevelDimension(32, 28);
+            lvlDataLength = 32*28*2;
+        }
+        lvlData.resize(lvlDataLength);
+
+        //init new space to emptyTile
+        for (int i = oldLength; i < lvlData.size(); i+=2)
+        {
+            lvlData[i] = (quint8)emptyTile;
+            lvlData[i+1] = 0x00;
+        }
+
+        update();
+        emit sizeChanged(size);
+    }
 }
 
 void QDKEdit::changeTileset(int tileset)
 {
-    if ((tileset >= 0) && (tileset < MAX_TILESETS) && (tileset != levels[currentLevel].tileset))
+    if ((tileset >= 0) && (tileset < MAX_TILESETS) && (tileset != currentTileset))
     {
-        levels[currentLevel].tileset = tileset;
+        currentTileset = tileset;
         dataIsChanged = true;
 
         updateTileset();
@@ -1112,20 +1152,17 @@ void QDKEdit::changeTileset(int tileset)
 
 void QDKEdit::changeTime(int time)
 {
-    if ((time >= 0) && (time <= 999) && (time != levels[currentLevel].time))
+    if ((time >= 0) && (time <= 999) && (time != currentTime))
     {
-        levels[currentLevel].time = time;
+        currentTime = time;
         dataIsChanged = true;
 
         emit changeTime(time);
     }
 }
 
-void QDKEdit::changeLevel(int id)
+void QDKEdit::saveLevel()
 {
-    if (!romLoaded)
-        return;
-
     if ((currentLevel != -1) && (dataIsChanged))
     {
         levels[currentLevel].fullDataUpToDate = false;
@@ -1138,7 +1175,35 @@ void QDKEdit::changeLevel(int id)
             levels[currentLevel].sprites[i].levelPos = levels[currentLevel].sprites[i].y*levelDimension.width() + levels[currentLevel].sprites[i].x;
             levels[currentLevel].sprites[i].ramPos = levels[currentLevel].sprites[i].levelPos + 0xDA75;
         }
+
+        levels[currentLevel].size = currentSize;
+        levels[currentLevel].time = currentTime;
+        levels[currentLevel].tileset = currentTileset;
+        levels[currentLevel].music = currentMusic;
+        levels[currentLevel].paletteIndex = currentPalIndex;
     }
+
+    dataIsChanged = false;
+}
+
+void QDKEdit::changeLevel(int id)
+{
+    if (!romLoaded)
+        return;
+
+/*    if ((currentLevel != -1) && (dataIsChanged))
+    {
+        levels[currentLevel].fullDataUpToDate = false;
+        levels[currentLevel].displayTilemap.clear();
+        levels[currentLevel].displayTilemap.append(lvlData);
+        levels[currentLevel].sprites.clear();
+        for (int i = 0; i < sprites.size(); i++)
+        {
+            levels[currentLevel].sprites.append((QDKSprite&)sprites[i]);
+            levels[currentLevel].sprites[i].levelPos = levels[currentLevel].sprites[i].y*levelDimension.width() + levels[currentLevel].sprites[i].x;
+            levels[currentLevel].sprites[i].ramPos = levels[currentLevel].sprites[i].levelPos + 0xDA75;
+        }
+    }*/
 
     dataIsChanged = false;
     currentLevel = id;
@@ -1146,6 +1211,12 @@ void QDKEdit::changeLevel(int id)
     lvlData.clear();
 
     lvlData.append(levels[currentLevel].displayTilemap);
+
+    currentSize = levels[currentLevel].size;
+    currentTime = levels[currentLevel].time;
+    currentTileset = levels[currentLevel].tileset;
+    currentMusic = levels[currentLevel].music;
+    currentPalIndex = levels[currentLevel].paletteIndex;
 
     lvlDataStart = 0;
     lvlDataLength = lvlData.size();

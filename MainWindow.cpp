@@ -17,10 +17,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->actionOpen_ROM->setShortcut(QKeySequence::Open);
     ui->actionSave_ROM->setShortcut(QKeySequence::Save);
 
-    connect(ui->spbLevel, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeLevel(int)));
     connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(updateText()));
-    //connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(updateGUI()));
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), ui->lvlEdit, SLOT(toggleSpriteMode(int)));
+    connect(ui->btnWrite, SIGNAL(clicked()), ui->lvlEdit, SLOT(saveLevel()));
     connect(ui->actionOpen_ROM, SIGNAL(triggered()), this, SLOT(loadROM()));
     connect(ui->actionSave_ROM, SIGNAL(triggered()), this, SLOT(SaveROM()));
 
@@ -30,6 +29,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->lvlEdit, SIGNAL(tilesetChanged(int)), ui->cmbTileset, SLOT(setCurrentIndex(int)));
     connect(ui->lvlEdit, SIGNAL(timeChanged(int)), ui->spbTime, SLOT(setValue(int)));
 
+    //connect(ui->spbLevel, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeLevel(int)));
+    connect(ui->spbLevel, SIGNAL(valueChanged(int)), this, SLOT(changeLevel(int)));
     connect(ui->cmbSize, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeSize(int)));
     connect(ui->cmbMusic, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeMusic(int)));
     connect(ui->cmbTileset, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeTileset(int)));
@@ -49,6 +50,19 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->lvlInfo->setPlainText(ui->lvlEdit->getLevelInfo());
     }
     ui->spbLevel->setFocus();
+}
+
+void MainWindow::changeLevel(int id)
+{
+    if (ui->lvlEdit->isChanged())
+    {
+        QMessageBox::StandardButton result = QMessageBox::question(NULL, "Level data changed", "The level data has been changed. Save data?", QMessageBox::Yes | QMessageBox::No);
+        if (result == QMessageBox::Yes) // save changes
+            ui->lvlEdit->saveLevel();
+        else if (result != QMessageBox::Yes) // discard changes
+            qWarning() << "Unexpected return value form messagebox!";
+    }
+    ui->lvlEdit->changeLevel(id);
 }
 
 void MainWindow::updateText()
@@ -81,9 +95,4 @@ void MainWindow::SaveROM()
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::on_btnWrite_clicked()
-{
-    ui->lvlEdit->saveAllLevels("mod.gb");
 }

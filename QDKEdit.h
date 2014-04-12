@@ -25,7 +25,14 @@
 #define SGB_SYSTEM_PAL 0x786F0 // decompressed size 0x1000
 // the SGB packet is always 51.(quint16)var+0x80.E4 00.E5.00.E6 00.C1.00.00 00.00.00.00
 // asm @ 0x0E70
-#define PAL_TABELLE 0x6093b
+#define PAL_ARCADE 0x30F9A
+// the palette for the 4 arcade levels are @ 0x4F9A (bank 0x0C) + (6*id)
+// this value is palette index + 0xC8
+// not freely editable!
+#define PAL_TABLE 0x6093B
+// PAL_TABLE + (id-4)*8
+// palettes for all other levels
+
 // BGP depends on tileset asm @ 0E9D
 
 struct QDKSprite : QSprite
@@ -104,6 +111,13 @@ private:
     QTileInfo tiles[256];
     QGBPalette sgbPal[512];
     int currentLevel;
+
+    quint8 currentSize; // 0x00 -> 0x240 bytes for tilemap else 0x380 bytes
+    quint8 currentMusic;
+    quint8 currentTileset;
+    quint16 currentTime;
+    quint16 currentPalIndex;
+
     bool romLoaded;
     
 signals:
@@ -118,6 +132,7 @@ private slots:
     
 public slots:
     void changeLevel(int id);
+    void saveLevel();
     void changeTime(int time);
     void changePalette(int palette);
     void changeTileset(int tileset);

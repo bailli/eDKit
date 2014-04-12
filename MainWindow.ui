@@ -34,24 +34,20 @@
      </rect>
     </property>
     <property name="plainText">
-     <string>das ist ein text
-zeile 2
-3
-4
-5</string>
+     <string/>
     </property>
    </widget>
    <widget class="QPushButton" name="btnWrite">
     <property name="geometry">
      <rect>
       <x>620</x>
-      <y>540</y>
+      <y>550</y>
       <width>101</width>
       <height>24</height>
      </rect>
     </property>
     <property name="text">
-     <string>Write level data</string>
+     <string>Save level data</string>
     </property>
    </widget>
    <widget class="QTabWidget" name="tabWidget">
@@ -150,6 +146,11 @@ zeile 2
        <item>
         <property name="text">
          <string>(03) 30x18 Tiles (32x28)</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(04) 20x18 Tiles (1-2)</string>
         </property>
        </item>
       </widget>
@@ -314,6 +315,36 @@ zeile 2
        <item>
         <property name="text">
          <string>(1D) Level 9-9</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(1E) ???</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(1F) ???</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(20) ???</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(21) Level 6-2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(22) Level 6-4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>(23) Level 6-8</string>
         </property>
        </item>
       </widget>

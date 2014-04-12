@@ -20,7 +20,7 @@ public:
 private slots:
     void updateText();
 
-    void on_btnWrite_clicked();
+    void changeLevel(int id);
     void loadROM();
     void SaveROM();
 
