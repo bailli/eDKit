@@ -84,6 +84,15 @@ void MainWindow::loadROM()
 
 void MainWindow::SaveROM()
 {
+    if (ui->lvlEdit->isChanged())
+    {
+        QMessageBox::StandardButton result = QMessageBox::question(NULL, "Level data changed", "The level data has been changed. Save data?", QMessageBox::Yes | QMessageBox::No);
+        if (result == QMessageBox::Yes) // save changes
+            ui->lvlEdit->saveLevel();
+        else if (result != QMessageBox::Yes) // discard changes
+            qWarning() << "Unexpected return value form messagebox!";
+    }
+
     QString file = QFileDialog::getSaveFileName(0, "Select Donkey Kong (GB) ROM", qApp->applicationDirPath(), "Donkey Kong (GB) ROM (*.gb)");
 
     if (!QFile::exists(file))
