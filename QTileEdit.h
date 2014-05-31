@@ -74,7 +74,7 @@ protected:
 
 signals:
     void dataChanged();
-    void singleTileChanged(int x, int y);
+    void singleTileChanged(int x, int y, int drawnTile);
 
 public slots:
     void updateLevel();

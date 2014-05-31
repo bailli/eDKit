@@ -4,6 +4,42 @@
 #include "QTileSelector.h"
 #include <QtCore/QDir>
 
+bool QDKEdit::isSprite[] = {
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, true , false, false, false, false, false,
+    false, false, false, false, true , false, false, true ,
+    true , false, false, false, false, true , true , true ,
+    true , false, false, false, true , false, false, true ,
+    true , false, true , false, true , false, true , false,
+    false, false, false, false, true , false, false, false,
+    false, false, false, false, false, false, true , false,
+    false, false, false, false, false, false, false, false,
+    false, false, true , false, true , false, false, true ,
+    true , false, false, false, true , false, true , false,
+    true , false, true , false, false, false, true , false,
+    true , false, true , false, true , false, true , false,
+    true , false, true , false, false, true , false, false,
+    false, false, true , false, true , false, true , false,
+    true , false, true , false, true , false, true , false,
+    true , false, false, false, false, false, true , false,
+    true , false, true , false, false, false, true , false,
+    true , false, true , false, false, false, true , false,
+    true , false, true , false, true , false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false
+};
+
+
 QDKEdit::QDKEdit(QWidget *parent) :
     QTileEdit(parent), romLoaded(false)
 {
@@ -38,13 +74,14 @@ QDKEdit::QDKEdit(QWidget *parent) :
     baseRom.open(QIODevice::ReadOnly);
     getTileInfo(&baseRom);
     createTileSets(&baseRom, palette);
+    createSprites(&baseRom, palette);
     readSGBPalettes(&baseRom);
     baseRom.close();
 
     loadTileSet("tiles/tileset_00.png", 0xFF, 704);
 
     getMouse(true);
-    connect(this, SIGNAL(singleTileChanged(int,int)), this, SLOT(checkForLargeTile(int,int)));
+    connect(this, SIGNAL(singleTileChanged(int,int,int)), this, SLOT(checkForLargeTile(int,int,int)));
 }
 
 QDKEdit::~QDKEdit()
@@ -346,8 +383,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.pixelPerfect = false;
         sprite.x = sprite.levelPos % 32;
         sprite.y = sprite.levelPos / 32;
-        sprite.sprite = new QPixmap(8*tiles[byte].w, 8*tiles[byte].h);
-        sprite.sprite->fill(Qt::black);
+        sprite.sprite = new QPixmap(QString("sprites/sprite_%1").arg(byte, 2, 16, QChar('0')));
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -385,7 +421,8 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
     if (levels[id].paletteIndex >= 0x200)
     {
-        qWarning() << QString("Level %1: invalid SGB palette 0x%2! default to 0x180").arg(id).arg(levels[id].paletteIndex, 4, 16, QChar('0'));
+        if (id <= LAST_LEVEL)
+            qWarning() << QString("Level %1: invalid SGB palette 0x%2! default to 0x180").arg(id).arg(levels[id].paletteIndex, 4, 16, QChar('0'));
         levels[id].paletteIndex = 0x180;
     }
 
@@ -599,8 +636,11 @@ bool QDKEdit::updateRawTilemap(quint8 id)
     return true;
 }
 
-void QDKEdit::checkForLargeTile(int x, int y)
+void QDKEdit::checkForLargeTile(int x, int y, int drawnTile)
 {
+    if (drawnTile == emptyTile)
+        return;
+
     int i = y * levelDimension.width() + x;
 
     if ((int)lvlData[i*2] == emptyTile)
@@ -664,16 +704,38 @@ bool QDKEdit::expandRawTilemap(quint8 id)
     return true;
 }
 
-void QDKEdit::copyTileToSet(QFile *src, quint32 offset, QImage *img, quint16 tileID, bool compressed = false, quint8 tileCount = 1, quint16 superOffset = 0)
-{
-    src->seek(offset);
+void QDKEdit::copyTileToSet(QFile *src, quint32 offset, QImage *img, quint16 tileID, quint8 tileSetID = 0, bool compressed = false, quint8 tileCount = 1, quint16 superOffset = 0)
+{       
     QDataStream *in;
-
-    quint16 tileX, tileY;
-
-    quint8 low, high, pixel;
-
+    quint16 tileX, tileY, pointer;
+    quint8 low, high, pixel, firstSet, secondSet;
     QByteArray decompressed;
+
+    if (tiles[tileID].setSpecific)
+    {
+        QDataStream tmp(src);
+
+        // get the two sub tilesets offsets
+        // rombank 0xC offset 0x4EEB is a table of two offsets for every tileset
+        tmp.setByteOrder(QDataStream::LittleEndian);
+        src->seek(SUBTILESET_TABLE + (tileSetID*2));
+
+        tmp >> firstSet;
+        tmp >> secondSet;
+
+        // this is finally the last pointer before the actual tile data...
+        // here are the "same" tiles from different tilesets grouped together
+        if ((tileID < 0xCD) || (tileID == 0xFD))
+            src->seek(offset + firstSet);
+        else
+            src->seek(offset + secondSet);
+
+        tmp >> pointer;
+
+        src->seek(offset + pointer);
+    }
+    else
+        src->seek(offset);
 
     if (compressed)
     {
@@ -772,8 +834,8 @@ bool QDKEdit::getTileInfo(QFile *src)
 
         // which tiles are compressed and which are not? if tilesCount >= 4 ???
         tiles[i].compressed = (tilesCount >= 4);
-/*
-        if (tilesCount == 0)
+
+/*        if (tilesCount == 0)
         {
             // at last try pointer+3 for sprite tiles like DK and Mario
             // the game code checks these tiles earlier but my code
@@ -834,15 +896,45 @@ bool QDKEdit::getTileInfo(QFile *src)
     return true;
 }
 
+bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
+{
+    QDataStream in(src);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    QDir dir;
+    if (!dir.exists("sprites"))
+        dir.mkdir("sprites");
+
+    QImage *sprite;
+
+    for (int id = 0; id < 256; id++)
+        //if (isSprite[id] && (QFile::exists(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')))))
+        if (isSprite[id])
+        {
+            sprite = new QImage(8*tiles[id].w, 8*tiles[id].h, QImage::Format_Indexed8);
+            sprite->setColor(0, palette[0].rgb());
+            sprite->setColor(1, palette[1].rgb());
+            sprite->setColor(2, palette[2].rgb());
+            sprite->setColor(3, palette[3].rgb());
+
+            sprite->fill(3);
+
+            for (int i = 0; i < tiles[id].w; i++)
+                for (int j = 0; j < tiles[id].h; j++)
+                    copyTileToSet(src, tiles[id].romOffset, sprite, i+(j*16), 0, tiles[id].compressed);
+
+            sprite->save(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')));
+        }
+
+    return true;
+}
+
 bool QDKEdit::createTileSets(QFile *src, QGBPalette palette)
 {
     QDataStream in(src);
     in.setByteOrder(QDataStream::LittleEndian);
 
-    quint8 firstSet, secondSet;
     quint8 tmp;
-    quint16 pointer;
-    quint32 offset;
 
     QImage fullSet(128, 352, QImage::Format_Indexed8);
     fullSet.setColor(0, palette[0].rgb());
@@ -870,32 +962,8 @@ bool QDKEdit::createTileSets(QFile *src, QGBPalette palette)
 
         fullSet.fill(0);
 
-        // get the two sub tilesets offsets
-        // rombank 0xC offset 0x4EEB is a table of two offsets for every tileset
-        src->seek(0xB*0x4000 + 0x4EEB + (id*2));
-        in >> firstSet;
-        in >> secondSet;
-
         for (int i = 0; i < 255; i++) // since 0xFF is the empty tile we just skip it altogether
-        {
-            if (tiles[i].setSpecific)
-            {
-                // this is finally the last pointer before the actual tile data...
-                // here are the "same" tiles from different tilesets grouped together
-                if ((i < 0xCD) || (i == 0xFD))
-                    src->seek(tiles[i].romOffset + firstSet);
-                else
-                    src->seek(tiles[i].romOffset + secondSet);
-
-                in >> pointer;
-
-                offset = tiles[i].romOffset + pointer;
-            }
-            else
-                offset = tiles[i].romOffset;
-
-            copyTileToSet(src, offset, &fullSet, i, tiles[i].compressed, tiles[i].count, tiles[i].additionalTilesAt);
-        }
+            copyTileToSet(src, tiles[i].romOffset, &fullSet, i, id, tiles[i].compressed, tiles[i].count, tiles[i].additionalTilesAt);
 
         tilesets[id] = fullSet;
         fullSet.save(QString("tiles/tileset_%1.png").arg(id, 2, 16, QChar('0')));
@@ -1190,20 +1258,6 @@ void QDKEdit::changeLevel(int id)
 {
     if (!romLoaded)
         return;
-
-/*    if ((currentLevel != -1) && (dataIsChanged))
-    {
-        levels[currentLevel].fullDataUpToDate = false;
-        levels[currentLevel].displayTilemap.clear();
-        levels[currentLevel].displayTilemap.append(lvlData);
-        levels[currentLevel].sprites.clear();
-        for (int i = 0; i < sprites.size(); i++)
-        {
-            levels[currentLevel].sprites.append((QDKSprite&)sprites[i]);
-            levels[currentLevel].sprites[i].levelPos = levels[currentLevel].sprites[i].y*levelDimension.width() + levels[currentLevel].sprites[i].x;
-            levels[currentLevel].sprites[i].ramPos = levels[currentLevel].sprites[i].levelPos + 0xDA75;
-        }
-    }*/
 
     dataIsChanged = false;
     currentLevel = id;

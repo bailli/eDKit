@@ -22,6 +22,7 @@
 #define MAX_TILESETS 0x22
 #define MAX_SPRITES 0x1B
 #define POINTER_TABLE 0x14000
+#define SUBTILESET_TABLE 0x30EEB
 #define SGB_SYSTEM_PAL 0x786F0 // decompressed size 0x1000
 // the SGB packet is always 51.(quint16)var+0x80.E4 00.E5.00.E6 00.C1.00.00 00.00.00.00
 // asm @ 0x0E70
@@ -100,9 +101,10 @@ private:
     bool recompressLevel(quint8 id);
     bool expandRawTilemap(quint8 id);
     bool updateRawTilemap(quint8 id);
-    void copyTileToSet(QFile *src, quint32 offset, QImage *img, quint16 tileID, bool compressed, quint8 tileCount, quint16 superOffset);
+    void copyTileToSet(QFile *src, quint32 offset, QImage *img, quint16 tileID, quint8 tileSetID, bool compressed, quint8 tileCount, quint16 superOffset);
     bool getTileInfo(QFile *src);
     bool createTileSets(QFile *src, QGBPalette palette);
+    bool createSprites(QFile *src, QGBPalette palette);
     void updateTileset();
 
     QDKLevel levels[MAX_LEVEL_ID];
@@ -119,7 +121,8 @@ private:
     quint16 currentPalIndex;
 
     bool romLoaded;
-    
+    static bool isSprite[256];
+
 signals:
     void paletteChanged(int palette);
     void tilesetChanged(int set);
@@ -128,7 +131,7 @@ signals:
     void sizeChanged(int size);
 
 private slots:
-    void checkForLargeTile(int x, int y);
+    void checkForLargeTile(int x, int y, int drawnTile);
     
 public slots:
     void changeLevel(int id);
@@ -142,3 +145,58 @@ public slots:
 };
 
 #endif // QDKEDIT_H
+
+
+/* sprite tiles:
+
+3a
+44
+47
+48
+4d
+4e
+4f
+50
+54
+57
+58
+5a
+5c
+5e
+64
+6e
+7a
+7c
+7f
+80
+84
+86
+88
+8a
+8e
+90
+92
+94
+96
+98
+9a
+9d
+a2
+a4
+a6
+a8
+aa
+ac
+ae
+b0
+b6
+b8
+ba
+be
+c0
+c2
+c6
+c8
+ca
+cc
+ */

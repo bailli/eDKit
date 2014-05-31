@@ -264,7 +264,7 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
             setTile(xTile, yTile, tmpTileToDraw);
             dataIsChanged = true;
             emit dataChanged();
-            emit singleTileChanged(xTile, yTile);
+            emit singleTileChanged(xTile, yTile, tmpTileToDraw);
             update();
         }
     }
