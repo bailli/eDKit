@@ -105,6 +105,9 @@ private:
     bool getTileInfo(QFile *src);
     bool createTileSets(QFile *src, QGBPalette palette);
     bool createSprites(QFile *src, QGBPalette palette);
+    void sortSprite(QImage *sprite, int id);
+    void copyTile(QImage *img, int x1, int y1, int x2, int y2, bool mirror);
+    void fillTile(QImage *img, int x, int y, int index);
     void updateTileset();
 
     QDKLevel levels[MAX_LEVEL_ID];
