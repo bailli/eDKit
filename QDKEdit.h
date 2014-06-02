@@ -77,6 +77,7 @@ struct QTileInfo
     quint8 w, h;
     quint8 type; // that's a bit vague - this is the pointer+N value
     quint8 count;
+    quint8 fullCount;
     quint8 setSpecific;
     quint16 additionalTilesAt;
     quint32 romOffset;
@@ -108,6 +109,7 @@ private:
     void sortSprite(QImage *sprite, int id);
     void copyTile(QImage *img, int x1, int y1, int x2, int y2, bool mirror);
     void fillTile(QImage *img, int x, int y, int index);
+    void swapTiles(QImage *img, int x1, int y1, int x2, int y2);
     void updateTileset();
 
     QDKLevel levels[MAX_LEVEL_ID];

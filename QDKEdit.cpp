@@ -383,7 +383,10 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.pixelPerfect = false;
         sprite.x = sprite.levelPos % 32;
         sprite.y = sprite.levelPos / 32;
-        sprite.sprite = new QPixmap(QString("sprites/sprite_%1").arg(byte, 2, 16, QChar('0')));
+        if (tiles[byte].setSpecific)
+            sprite.sprite = new QPixmap(QString("sprites/sprite_%1_set_%2.png").arg(byte, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')));
+        else
+            sprite.sprite = new QPixmap(QString("sprites/sprite_%1.png").arg(byte, 2, 16, QChar('0')));
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -846,6 +849,7 @@ bool QDKEdit::getTileInfo(QFile *src)
             }
         }
 
+
         // which tiles are compressed and which are not? if tilesCount >= 4 ???
         tiles[i].compressed = (tilesCount >= 4);
 
@@ -855,6 +859,7 @@ bool QDKEdit::getTileInfo(QFile *src)
         in >> tiles[i].h;
         in >> tiles[i].w;
         tiles[i].count = tiles[i].h * tiles[i].w; // just get enough tiles to display the full super tile - no animations
+        tiles[i].fullCount = tilesCount;
 
         if (tiles[i].count == 0)
             continue;
@@ -863,6 +868,11 @@ bool QDKEdit::getTileInfo(QFile *src)
         {
             tiles[i].additionalTilesAt = addOffset;
             addOffset += (tiles[i].count - 1);
+        }
+
+        if (i == 0x8A)
+        {
+            tiles[i].h = 4;
         }
 
         src->seek(pointer+6);
@@ -882,6 +892,13 @@ bool QDKEdit::getTileInfo(QFile *src)
                 offset = 0x1B*0x4000 + pointer;
 
             tiles[i].romOffset = offset;
+
+            // quick hack to get the right offset for the mario sprite
+            if (i == 0x7F)
+            {
+                tiles[i].romOffset = 0x106F0;
+                tiles[i].fullCount = 16;
+            }
 
             continue;
         }
@@ -914,89 +931,124 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
         dir.mkdir("sprites");
 
     QImage *sprite;
+    int setsToGo = 1;
 
     for (int id = 0; id < 256; id++)
         //if (isSprite[id] && (QFile::exists(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')))))
         if (isSprite[id])
         {
-            sprite = new QImage(8*tiles[id].w, 8*tiles[id].h, QImage::Format_Indexed8);
-            sprite->setColor(0, palette[0].rgb());
-            sprite->setColor(1, palette[1].rgb());
-            sprite->setColor(2, palette[2].rgb());
-            sprite->setColor(3, palette[3].rgb());
-
             if (tiles[id].setSpecific)
-            {
-                qDebug() << QString("0x%1 is set specific?").arg(id, 2, 16, QChar('0'));
-                QDataStream tmp(src);
-
-                // get the two sub tilesets offsets
-                // rombank 0xC offset 0x4EEB is a table of two offsets for every tileset
-                tmp.setByteOrder(QDataStream::LittleEndian);
-                src->seek(SUBTILESET_TABLE + (0x1C*2));
-
-                tmp >> firstSet;
-                tmp >> secondSet;
-
-                // this is finally the last pointer before the actual tile data...
-                // here are the "same" tiles from different tilesets grouped together
-                if ((id < 0xCD) || (id == 0xFD))
-                    src->seek(tiles[id].romOffset + firstSet);
-                else
-                    src->seek(tiles[id].romOffset + secondSet);
-
-                tmp >> pointer;
-
-                src->seek(tiles[id].romOffset + pointer);
-            }
+                setsToGo = MAX_TILESETS;
             else
-                src->seek(tiles[id].romOffset);
+                setsToGo = 1;
 
-            if (tiles[id].compressed)
+            for (int set = 0; set < setsToGo; set++)
             {
-                QDataStream decomp(src);
-                decompressed = LZSSDecompress(&decomp, 0x10*tiles[id].count);
-                in = new QDataStream(decompressed);
-            }
-            else
-                in = new QDataStream(src);
-
-            in->setByteOrder(QDataStream::LittleEndian);
-
-            sprite->fill(3);
-
-            for (int i = 0; i < tiles[id].w; i++)
-                for (int j = 0; j < tiles[id].h; j++)
+                if (setsToGo == 1)
                 {
-                    tileY = j * 8;
-                    tileX = i * 8;
-
-                    for (int ii = 0; ii < 8; ii++)
-                    {
-                        (*in) >> low;
-                        (*in) >> high;
-
-                        for (int jj = 0; jj < 8; jj++)
-                        {
-                            pixel = low & 0x80;
-                            pixel >>= 1;
-                            pixel |= high & 0x80;
-                            pixel >>= 6;
-
-                            low <<= 1;
-                            high <<= 1;
-
-                            sprite->setPixel(tileX+jj, tileY+ii, pixel);
-                        }
-                    }
-
+                    if (QFile::exists(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'))))
+                        continue;
+                }
+                else
+                {
+                    if (QFile::exists(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0'))))
+                        continue;
                 }
 
-            sortSprite(sprite, id);
+                sprite = new QImage(8*tiles[id].w, 8*tiles[id].h, QImage::Format_Indexed8);
+                sprite->setColor(0, palette[0].rgb());
+                sprite->setColor(1, palette[1].rgb());
+                sprite->setColor(2, palette[2].rgb());
+                sprite->setColor(3, palette[3].rgb());
 
-            sprite->save(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')));
+                if (tiles[id].setSpecific)
+                {
+                    QDataStream tmp(src);
 
-            delete in;
+                    // get the two sub tilesets offsets
+                    // rombank 0xC offset 0x4EEB is a table of two offsets for every tileset
+                    tmp.setByteOrder(QDataStream::LittleEndian);
+                    src->seek(SUBTILESET_TABLE + (set*2));
+
+                    tmp >> firstSet;
+                    tmp >> secondSet;
+
+                    // this is finally the last pointer before the actual tile data...
+                    // here are the "same" tiles from different tilesets grouped together
+                    if ((id < 0xCD) || (id == 0xFD))
+                        src->seek(tiles[id].romOffset + firstSet);
+                    else
+                        src->seek(tiles[id].romOffset + secondSet);
+
+                    tmp >> pointer;
+
+                    src->seek(tiles[id].romOffset + pointer);
+                }
+                else
+                    src->seek(tiles[id].romOffset);
+
+                if (tiles[id].compressed)
+                {
+                    QDataStream decomp(src);
+                    decompressed = LZSSDecompress(&decomp, 0x10*tiles[id].fullCount);
+                    in = new QDataStream(decompressed);
+                }
+                else
+                    in = new QDataStream(src);
+
+                in->setByteOrder(QDataStream::LittleEndian);
+
+                sprite->fill(3);
+
+                for (int i = 0; i < tiles[id].w; i++)
+                    for (int j = 0; j < tiles[id].h; j++)
+                    {
+                        tileY = j * 8;
+                        tileX = i * 8;
+
+                        //skip empty tiles for specific sprites
+                        if (((id == 0xC2) && (i == 0) && (j == 0)) ||
+                            ((id == 0xC2) && (i == 0) && (j == 1)))
+                            for (int z = 0; z < 16; z++)
+                                (*in) >> low;
+
+                        for (int ii = 0; ii < 8; ii++)
+                        {
+                            (*in) >> low;
+                            (*in) >> high;
+
+                            for (int jj = 0; jj < 8; jj++)
+                            {
+                                pixel = low & 0x80;
+                                pixel >>= 1;
+                                pixel |= high & 0x80;
+                                pixel >>= 6;
+
+                                low <<= 1;
+                                high <<= 1;
+
+                                sprite->setPixel(tileX+jj, tileY+ii, pixel);
+                            }
+                        }
+
+                    }
+
+                sortSprite(sprite, id);
+
+                if (tiles[id].setSpecific)
+                    sprite->save(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')));
+                else
+                    sprite->save(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')));
+
+                delete sprite;
+
+            /*if (tiles[id].setSpecific)
+                spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(setID, 2, 16, QChar('0')), sprite);
+            else
+                spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), sprite);
+*/
+                delete in;
+            }
         }
 
     return true;
@@ -1033,23 +1085,15 @@ void QDKEdit::sortSprite(QImage *sprite, int id)
         fillTile(sprite, 1, 0, 0);
     }
 
-    /* Mario
-
-
-    */
-    if (id == 0x7F)
-    {
-
-    }
-
     /* Pauline
-
-
-
+      1 3    1 4
+      4 5    2 5
+      2 6 => 3 6
     */
     if (id == 0xC2)
     {
-
+        swapTiles(sprite, 0, 1, 1, 0);
+        swapTiles(sprite, 0, 1, 0, 2);
     }
 
     /* DK
@@ -1060,7 +1104,7 @@ void QDKEdit::sortSprite(QImage *sprite, int id)
     */
     if ((id == 0x6E) || (id == 0x44) || (id == 0x90) || (id == 0x5E) ||
         (id == 0x9A) || (id == 0xCC) || (id == 0x3A) || (id == 0xA6) ||
-        (id == 0xAA) || (id == 0xBE) || (id == 0x92) || (id == 0xA4))
+        (id == 0xAA) || (id == 0xBE) || (id == 0x92) || (id == 0xA4) || (id == 0x8A))
     {
         copyTile(sprite, 0, 1, 2, 1, true); //Z2 => mZA
         copyTile(sprite, 1, 0, 2, 2, true); //Z5 => mZB
@@ -1070,15 +1114,6 @@ void QDKEdit::sortSprite(QImage *sprite, int id)
         copyTile(sprite, 2, 2, 0, 2, true); //5Z => Z3
         copyTile(sprite, 0, 3, 1, 1, false); //Z4 => Z6
         copyTile(sprite, 2, 3, 0, 3, true); //6Z => Z4
-    }
-
-    /* dangling DK
-
-
-    */
-    if (id == 0x8A)
-    {
-
     }
 
     /* moving board
@@ -1110,6 +1145,20 @@ void QDKEdit::copyTile(QImage *img, int x1, int y1, int x2, int y2, bool mirror)
             else
                 img->setPixel((x2+1)*8 - 1 - i, y2*8 + j, pixel);
         }
+}
+
+void QDKEdit::swapTiles(QImage *img, int x1, int y1, int x2, int y2)
+{
+    int pixel1, pixel2;
+    for (int j = 0; j < 8; j++)
+        for (int i = 0; i < 8; i++)
+        {
+            pixel1 = img->pixelIndex(x1*8 + i, y1*8 + j);
+            pixel2 = img->pixelIndex(x2*8 + i, y2*8 + j);
+            img->setPixel(x1*8 + i, y1*8 + j, pixel2);
+            img->setPixel(x2*8 + i, y2*8 + j, pixel1);
+        }
+
 }
 
 void QDKEdit::fillTile(QImage *img, int x, int y, int index)
