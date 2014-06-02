@@ -5,6 +5,7 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QList>
+#include <QtCore/QMap>
 #include <QtGui/QPainter>
 
 //find rombanks containing the level data
@@ -110,6 +111,7 @@ private:
     void copyTile(QImage *img, int x1, int y1, int x2, int y2, bool mirror);
     void fillTile(QImage *img, int x, int y, int index);
     void swapTiles(QImage *img, int x1, int y1, int x2, int y2);
+    QMap<QString, QPixmap *> spriteImg;
     void updateTileset();
 
     QDKLevel levels[MAX_LEVEL_ID];

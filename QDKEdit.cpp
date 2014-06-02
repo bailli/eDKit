@@ -383,10 +383,14 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.pixelPerfect = false;
         sprite.x = sprite.levelPos % 32;
         sprite.y = sprite.levelPos / 32;
-        if (tiles[byte].setSpecific)
+/*        if (tiles[byte].setSpecific)
             sprite.sprite = new QPixmap(QString("sprites/sprite_%1_set_%2.png").arg(byte, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')));
         else
-            sprite.sprite = new QPixmap(QString("sprites/sprite_%1.png").arg(byte, 2, 16, QChar('0')));
+            sprite.sprite = new QPixmap(QString("sprites/sprite_%1.png").arg(byte, 2, 16, QChar('0')));*/
+        if (tiles[byte].setSpecific)
+            sprite.sprite = spriteImg[QString("sprite_%1_set_%2.png").arg(byte, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0'))];
+        else
+            sprite.sprite = spriteImg[QString("sprite_%1.png").arg(byte, 2, 16, QChar('0'))];
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -931,6 +935,7 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
         dir.mkdir("sprites");
 
     QImage *sprite;
+    QPixmap *tmp;
     int setsToGo = 1;
 
     for (int id = 0; id < 256; id++)
@@ -947,12 +952,18 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                 if (setsToGo == 1)
                 {
                     if (QFile::exists(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'))))
+                    {
+                        spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), new QPixmap(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'))));
                         continue;
+                    }
                 }
                 else
                 {
                     if (QFile::exists(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0'))))
+                    {
+                        spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')), new QPixmap(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0'))));
                         continue;
+                    }
                 }
 
                 sprite = new QImage(8*tiles[id].w, 8*tiles[id].h, QImage::Format_Indexed8);
@@ -1040,13 +1051,15 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                 else
                     sprite->save(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')));
 
+                tmp = new QPixmap();
+                tmp->convertFromImage(*sprite);
                 delete sprite;
 
-            /*if (tiles[id].setSpecific)
-                spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(setID, 2, 16, QChar('0')), sprite);
-            else
-                spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), sprite);
-*/
+                if (tiles[id].setSpecific)
+                    spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')), tmp);
+                else
+                    spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), tmp);
+
                 delete in;
             }
         }
@@ -1452,6 +1465,11 @@ void QDKEdit::changeTileset(int tileset)
         dataIsChanged = true;
 
         updateTileset();
+        for (int i = 0; i < sprites.size(); i++)
+        {
+            if (tiles[sprites.at(i).id].setSpecific)
+                sprites[i].sprite = spriteImg[QString("sprite_%1_set_%2.png").arg(sprites.at(i).id, 2, 16, QChar('0')).arg(tileset, 2, 16, QChar('0'))];
+        }
         update();
         emit tilesetChanged(tileset);
     }
