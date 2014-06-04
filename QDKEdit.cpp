@@ -3,6 +3,7 @@
 #include "MainWindow.h"
 #include "QTileSelector.h"
 #include <QtCore/QDir>
+#include <QtGui/QBitmap>
 
 bool QDKEdit::isSprite[] = {
     false, false, false, false, false, false, false, false,
@@ -70,6 +71,8 @@ QDKEdit::QDKEdit(QWidget *parent) :
     palette[2] = Qt::yellow;
     palette[3] = Qt::red;
 
+    transparentSprites = true;
+
     QFile baseRom(BASE_ROM);
     baseRom.open(QIODevice::ReadOnly);
     getTileInfo(&baseRom);
@@ -86,10 +89,8 @@ QDKEdit::QDKEdit(QWidget *parent) :
 
 QDKEdit::~QDKEdit()
 {
-/*    for (int i = 0; i < MAX_LEVEL_ID; i++)
-    {
-        for (int j = 0; j < levels[i].sprites.size();)
-    }*/
+    qDeleteAll(spritePix);
+    qDeleteAll(spriteImg);
 }
 
 bool QDKEdit::saveAllLevels(QString romFile)
@@ -383,14 +384,9 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.pixelPerfect = false;
         sprite.x = sprite.levelPos % 32;
         sprite.y = sprite.levelPos / 32;
-/*        if (tiles[byte].setSpecific)
-            sprite.sprite = new QPixmap(QString("sprites/sprite_%1_set_%2.png").arg(byte, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0')));
-        else
-            sprite.sprite = new QPixmap(QString("sprites/sprite_%1.png").arg(byte, 2, 16, QChar('0')));*/
-        if (tiles[byte].setSpecific)
-            sprite.sprite = spriteImg[QString("sprite_%1_set_%2.png").arg(byte, 2, 16, QChar('0')).arg(levels[id].tileset, 2, 16, QChar('0'))];
-        else
-            sprite.sprite = spriteImg[QString("sprite_%1.png").arg(byte, 2, 16, QChar('0'))];
+        // we set the correct pointer when we copy
+        // the sprite to this->sprite vector
+        sprite.sprite = NULL;
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -935,11 +931,10 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
         dir.mkdir("sprites");
 
     QImage *sprite;
-    QPixmap *tmp;
     int setsToGo = 1;
 
     for (int id = 0; id < 256; id++)
-        //if (isSprite[id] && (QFile::exists(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')))))
+    {
         if (isSprite[id])
         {
             if (tiles[id].setSpecific)
@@ -953,7 +948,7 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                 {
                     if (QFile::exists(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'))))
                     {
-                        spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), new QPixmap(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'))));
+                        spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), new QImage(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'))));
                         continue;
                     }
                 }
@@ -961,7 +956,7 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                 {
                     if (QFile::exists(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0'))))
                     {
-                        spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')), new QPixmap(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0'))));
+                        spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')), new QImage(QString("sprites/sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0'))));
                         continue;
                     }
                 }
@@ -1051,18 +1046,20 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                 else
                     sprite->save(QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0')));
 
+                /*QPixmap *tmp;
                 tmp = new QPixmap();
                 tmp->convertFromImage(*sprite);
-                delete sprite;
+                delete sprite;*/
 
                 if (tiles[id].setSpecific)
-                    spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')), tmp);
+                    spriteImg.insert(QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(set, 2, 16, QChar('0')), sprite);
                 else
-                    spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), tmp);
+                    spriteImg.insert(QString("sprite_%1.png").arg(id, 2, 16, QChar('0')), sprite);
 
                 delete in;
             }
         }
+    }
 
     return true;
 }
@@ -1399,6 +1396,38 @@ void QDKEdit::updateTileset()
 
     if (selector)
         selector->changeTilePixmap(tileSet);
+
+    qDeleteAll(spritePix);
+    QPixmap *tmp;
+    QImage *img;
+    QMap<QString, QImage *>::const_iterator i = spriteImg.constBegin();
+    while (i != spriteImg.constEnd())
+    {
+        img = i.value();
+        // some sprites should use 0x9C as OBP
+        // hammer for example
+        // but we ignore that (at least for now)
+        bgp = 0x1E;
+        for (int j = 0; j < 4; j++)
+        {
+            mask = bgp & 0x03;
+            bgp >>= 2;
+            img->setColor(j, sgbPal[currentPalIndex][mask].rgb());
+        }
+
+        tmp = new QPixmap();
+        tmp->convertFromImage(*img);
+        if (transparentSprites)
+            tmp->setMask(tmp->createMaskFromColor(img->color(0)));
+        spritePix.insert(i.key(), tmp);
+        ++i;
+    }
+
+    for (int i = 0; i < sprites.size(); i++)
+        if (tiles[sprites[i].id].setSpecific)
+            sprites[i].sprite = spritePix[QString("sprite_%1_set_%2.png").arg(sprites.at(i).id, 2, 16, QChar('0')).arg(currentTileset, 2, 16, QChar('0'))];
+        else
+            sprites[i].sprite = spritePix[QString("sprite_%1.png").arg(sprites.at(i).id, 2, 16, QChar('0'))];
 }
 
 void QDKEdit::changeMusic(int music)
@@ -1465,11 +1494,6 @@ void QDKEdit::changeTileset(int tileset)
         dataIsChanged = true;
 
         updateTileset();
-        for (int i = 0; i < sprites.size(); i++)
-        {
-            if (tiles[sprites.at(i).id].setSpecific)
-                sprites[i].sprite = spriteImg[QString("sprite_%1_set_%2.png").arg(sprites.at(i).id, 2, 16, QChar('0')).arg(tileset, 2, 16, QChar('0'))];
-        }
         update();
         emit tilesetChanged(tileset);
     }
@@ -1541,7 +1565,13 @@ void QDKEdit::changeLevel(int id)
 
     sprites.clear();
     for (int i = 0; i < levels[currentLevel].sprites.size(); i++)
+    {
         sprites.append(levels[currentLevel].sprites.at(i));
+        if (tiles[sprites[i].id].setSpecific)
+           sprites[i].sprite = spritePix[QString("sprite_%1_set_%2.png").arg(sprites.at(i).id, 2, 16, QChar('0')).arg(currentTileset, 2, 16, QChar('0'))];
+       else
+           sprites[i].sprite = spritePix[QString("sprite_%1.png").arg(sprites.at(i).id, 2, 16, QChar('0'))];
+    }
 
     update();
 
