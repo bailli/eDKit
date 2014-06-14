@@ -5,12 +5,15 @@
 
 class QTileSelector;
 
+enum { BOTTOM = 0, FLIPPED = 1, TOP = 2, LEFT = 3, RIGHT = 4 };
+
 struct QSprite
 {
     bool pixelPerfect;
     int x, y;
     QSize size;
     QPixmap *sprite;
+    int rotate;
     int id;
 };
 
@@ -36,6 +39,7 @@ protected:
     void paintEvent(QPaintEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
     void mousePressEvent(QMouseEvent *e);
+    void mouseReleaseEvent(QMouseEvent *);
     void resizeEvent(QResizeEvent *e);
 
     void resized(QSize newSize);
@@ -54,6 +58,7 @@ protected:
     int tileToDraw;
     int tileCount;
     int spriteToMove;
+    int mousePressed;
     float scaleFactorX;
     float scaleFactorY;
     bool dataIsChanged;
@@ -75,6 +80,9 @@ protected:
 signals:
     void dataChanged();
     void singleTileChanged(int x, int y, int drawnTile);
+    void spriteSelected(int spriteNo);
+    void spriteAdded(QString sprite);
+    void spriteRemoved(int index);
 
 public slots:
     void updateLevel();

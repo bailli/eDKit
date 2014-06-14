@@ -269,6 +269,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     in.setByteOrder(QDataStream::LittleEndian);
 
     quint8 byte, flag;
+    quint16 address;
 
     src->seek(levels[id].offset);
 
@@ -387,14 +388,50 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         // we set the correct pointer when we copy
         // the sprite to this->sprite vector
         sprite.sprite = NULL;
+        sprite.rotate = BOTTOM;
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
         in >> byte;
     }
 
+    /*QDKSprite spr;
+    spr.id = 0x80;
+    spr.ramPos = 0xDC63;
+    spr.levelPos = spr.ramPos - 0xDA75;
+    spr.pixelPerfect = false;
+    spr.x = spr.levelPos % 32;
+    spr.y = spr.levelPos / 32;
+    spr.sprite = NULL;
+    spr.rotate = BOTTOM;
+    spr.size = QSize(tiles[0x80].w, tiles[0x80].h);
+    levels[id].sprites.append(spr);*/
+
+
     if (levels[id].sprites.size() > MAX_SPRITES)
         qWarning() << QString("Level %1: too many sprites! count: %2").arg(id).arg(levels[id].sprites.size());
+
+    // this not really correct...
+    if (levels[id].addSpriteData)
+    {
+        for (int i = 0; i < levels[id].rawAddSpriteData.size(); i+=4)
+        {
+            byte = (quint8)levels[id].rawAddSpriteData[i];
+            if ((byte == 0x00) || (byte == 0x70) || (byte == 0x72))
+                continue;
+
+            address = (quint8)levels[id].rawAddSpriteData[i+1] + (0x100 * (quint8)levels[id].rawAddSpriteData[i+2]);
+            flag = (quint8)levels[id].rawAddSpriteData[i+3];
+
+            for (int j = 0; j < levels[id].sprites.size(); j++)
+                if (levels[id].sprites.at(j).ramPos == address)
+                {
+                    levels[id].sprites[j].addFlag = flag;
+                    levels[id].sprites[j].rotate = flag;
+                    break;
+                }
+        }
+    }
 
     //copy the full raw data
     //no need to recompress if level data needs to be relocated
@@ -551,6 +588,14 @@ bool QDKEdit::recompressLevel(quint8 id)
         }
 
     }
+
+    /*if (id == 0x00)
+    {
+        lvl->rawAddSpriteData[4] = (quint8)0x7f;
+        lvl->rawAddSpriteData[5] = (quint8)0x63;
+        lvl->rawAddSpriteData[6] = (quint8)0xDC;
+        lvl->rawAddSpriteData[7] = (quint8)0x02;
+    }*/
 
     if (!lvl->addSpriteData)
         lvl->fullData.append(QChar(0x00));
@@ -1510,6 +1555,42 @@ void QDKEdit::changeTime(int time)
     }
 }
 
+void QDKEdit::changeSpriteTransparency(bool transparent)
+{
+    if (transparentSprites != transparent)
+    {
+        transparentSprites = transparent;
+        updateTileset();
+        update();
+    }
+}
+
+void QDKEdit::addSprite(int id)
+{
+    if (!isSprite[id])
+        return;
+
+    dataIsChanged = true;
+    QDKSprite sprite;
+    sprite.id = id;
+    sprite.levelPos = 0;
+    sprite.ramPos = 0xDA75;
+    sprite.pixelPerfect = false;
+    sprite.x = 0;
+    sprite.y = 0;
+    sprite.rotate = BOTTOM;
+    sprite.size = QSize(tiles[id].w, tiles[id].h);
+
+    if (tiles[id].setSpecific)
+       sprite.sprite = spritePix[QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(currentTileset, 2, 16, QChar('0'))];
+   else
+       sprite.sprite = spritePix[QString("sprite_%1.png").arg(id, 2, 16, QChar('0'))];
+
+    sprites.append(sprite);
+    emit spriteAdded(QString("Sprite 0x%1").arg(id, 2, 16, QChar('0')));
+    update();
+}
+
 void QDKEdit::saveLevel()
 {
     if ((currentLevel != -1) && (dataIsChanged))
@@ -1544,7 +1625,6 @@ void QDKEdit::changeLevel(int id)
     currentLevel = id;
 
     lvlData.clear();
-
     lvlData.append(levels[currentLevel].displayTilemap);
 
     currentSize = levels[currentLevel].size;
@@ -1552,6 +1632,7 @@ void QDKEdit::changeLevel(int id)
     currentTileset = levels[currentLevel].tileset;
     currentMusic = levels[currentLevel].music;
     currentPalIndex = levels[currentLevel].paletteIndex;
+
 
     lvlDataStart = 0;
     lvlDataLength = lvlData.size();
@@ -1563,6 +1644,9 @@ void QDKEdit::changeLevel(int id)
 
     updateTileset();
 
+    for (int i = sprites.size()-1; i >= 0; i--)
+        emit spriteRemoved(i);
+
     sprites.clear();
     for (int i = 0; i < levels[currentLevel].sprites.size(); i++)
     {
@@ -1571,6 +1655,7 @@ void QDKEdit::changeLevel(int id)
            sprites[i].sprite = spritePix[QString("sprite_%1_set_%2.png").arg(sprites.at(i).id, 2, 16, QChar('0')).arg(currentTileset, 2, 16, QChar('0'))];
        else
            sprites[i].sprite = spritePix[QString("sprite_%1.png").arg(sprites.at(i).id, 2, 16, QChar('0'))];
+        emit spriteAdded(QString("Sprite 0x%1").arg(sprites[i].id, 2, 16, QChar('0')));
     }
 
     update();

@@ -37,6 +37,11 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->spbPalette, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changePalette(int)));
     connect(ui->spbTime, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeTime(int)));
 
+    connect(ui->ckbTransparency, SIGNAL(clicked(bool)), ui->lvlEdit, SLOT(changeSpriteTransparency(bool)));
+    connect(ui->lvlEdit, SIGNAL(spriteSelected(int)), this, SLOT(selectSprite(int)));
+    connect(ui->lvlEdit, SIGNAL(spriteAdded(QString)), this, SLOT(addSprite(QString)));
+    connect(ui->lvlEdit, SIGNAL(spriteRemoved(int)), this, SLOT(removeSprite(int)));
+
     if ((qApp->arguments().size() > 1) && (QFile::exists(qApp->arguments().at(1))))
     {
         ui->lvlEdit->loadAllLevels(qApp->arguments().at(1));
@@ -49,8 +54,41 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->lvlEdit->changeLevel(0);
         ui->lvlInfo->setPlainText(ui->lvlEdit->getLevelInfo());
     }
+    ui->tabWidget->setCurrentIndex(0);
     ui->spbLevel->setFocus();
+
+
+    QMenu *newSpriteMenu = new QMenu(this);
+    QDir dir("sprites/");
+    QStringList list = dir.entryList(QStringList("*.png"), QDir::Files, QDir::Name);
+
+    for (int i = 0; i < list.size(); i++)
+    {
+        newSpriteMenu->addAction(QIcon("sprites/" + list.at(i)), "Sprite 0x" + list.at(i).mid(7,2));
+        if (list.at(i).contains("set", Qt::CaseInsensitive))
+            i+=0x21;
+    }
+
+    ui->toolButton->setMenu(newSpriteMenu);
+    connect(newSpriteMenu, SIGNAL(triggered(QAction*)), this, SLOT(addNewSprite(QAction*)));
 }
+
+void MainWindow::selectSprite(int num)
+{
+    ui->lstSprites->setCurrentRow(num);
+}
+
+void MainWindow::addSprite(QString sprite)
+{
+    ui->lstSprites->addItem(sprite);
+}
+
+void MainWindow::removeSprite(int index)
+{
+    QListWidgetItem *tmp = ui->lstSprites->takeItem(index);
+    delete tmp;
+}
+
 
 void MainWindow::changeLevel(int id)
 {
@@ -59,7 +97,7 @@ void MainWindow::changeLevel(int id)
         QMessageBox::StandardButton result = QMessageBox::question(NULL, "Level data changed", "The level data has been changed. Save data?", QMessageBox::Yes | QMessageBox::No);
         if (result == QMessageBox::Yes) // save changes
             ui->lvlEdit->saveLevel();
-        else if (result != QMessageBox::Yes) // discard changes
+        else if (result != QMessageBox::No) // discard changes
             qWarning() << "Unexpected return value form messagebox!";
     }
     ui->lvlEdit->changeLevel(id);
@@ -89,7 +127,7 @@ void MainWindow::SaveROM()
         QMessageBox::StandardButton result = QMessageBox::question(NULL, "Level data changed", "The level data has been changed. Save data?", QMessageBox::Yes | QMessageBox::No);
         if (result == QMessageBox::Yes) // save changes
             ui->lvlEdit->saveLevel();
-        else if (result != QMessageBox::Yes) // discard changes
+        else if (result != QMessageBox::No) // discard changes
             qWarning() << "Unexpected return value form messagebox!";
     }
 
@@ -101,7 +139,14 @@ void MainWindow::SaveROM()
     ui->lvlEdit->saveAllLevels(file);
 }
 
+
+void MainWindow::addNewSprite(QAction *action)
+{
+    ui->lvlEdit->addSprite(action->text().mid(9,2).toInt(0, 16));
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;
 }
+

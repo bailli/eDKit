@@ -23,6 +23,11 @@ private slots:
     void changeLevel(int id);
     void loadROM();
     void SaveROM();
+    void selectSprite(int num);
+    void addSprite(QString sprite);
+    void removeSprite(int index);
+
+    void addNewSprite(QAction *action);
 
 private:
     Ui::MainWindow *ui;

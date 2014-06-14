@@ -10,7 +10,7 @@
 #include "QTileSelector.h"
 
 QTileEdit::QTileEdit(QWidget *parent) :
-    QWidget(parent), dataIsChanged(false), emptyTile(0), tileToDraw(emptyTile), keepAspect(true), selector(NULL), tileDataIs16bit(false), spriteMode(false), spriteToMove(-1)
+    QWidget(parent), dataIsChanged(false), mousePressed(false), emptyTile(0), tileToDraw(emptyTile), keepAspect(true), selector(NULL), tileDataIs16bit(false), spriteMode(false), spriteToMove(-1)
 {
     //setMouseTracking(true);
     background = QImage(levelDimension.width()*tileSize.width(), levelDimension.height()*tileSize.height(), QImage::Format_ARGB32);
@@ -199,7 +199,43 @@ void QTileEdit::paintEvent(QPaintEvent *e)
                 x = sprites.at(i).x;
                 y = sprites.at(i).y;
             }
-            painter.drawPixmap(x, y, *sprites.at(i).sprite);
+
+//            if (sprites.at(i).id == 0x54)
+//                x -= tileSize.width()/2;
+
+            switch (sprites.at(i).rotate)
+            {
+                case LEFT:
+                    painter.save();
+                    painter.translate(sprites.at(i).sprite->height(), 0);
+                    painter.rotate(90);
+                    painter.drawPixmap(y, -1*x, *sprites.at(i).sprite);
+                    painter.restore();
+                    break;
+                case RIGHT:
+                    painter.save();
+                    painter.translate(0, sprites.at(i).sprite->width());
+                    painter.rotate(-90);
+                    painter.drawPixmap(-1*y, x, *sprites.at(i).sprite);
+                    painter.restore();
+                    break;
+                case TOP:
+                    painter.save();
+                    painter.translate(sprites.at(i).sprite->width(), sprites.at(i).sprite->height());
+                    painter.rotate(180);
+                    painter.drawPixmap(-1*x, -1*y, *sprites.at(i).sprite);
+                    painter.restore();
+                    break;
+                case FLIPPED:
+                    painter.save();
+                    painter.translate(sprites.at(i).sprite->width(), 0);
+                    painter.scale(-1, 1);
+                    painter.drawPixmap(-1*x, y, *sprites.at(i).sprite);
+                    painter.restore();
+                    break;
+                 case BOTTOM:
+                 default: painter.drawPixmap(x, y, *sprites.at(i).sprite); break;
+            }
         }
     }
 
@@ -276,39 +312,105 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         int my = (float)e->y() / scaleFactorY;
         int sx1, sx2, sy1, sy2;
 
-        for (spriteNo = 0; spriteNo < sprites.size(); spriteNo++)
+        if (!mousePressed)
         {
-            if (sprites.at(spriteNo).pixelPerfect)
+            for (spriteNo = 0; spriteNo < sprites.size(); spriteNo++)
             {
-                sx1 = sprites.at(spriteNo).x;
-                sx2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.width();
-                sy1 = sprites.at(spriteNo).y;
-                sy2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.height();
+                if (sprites.at(spriteNo).pixelPerfect)
+                {
+                    sx1 = sprites.at(spriteNo).x;
+                    sy1 = sprites.at(spriteNo).y;
+                    if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
+                    {
+                        sx2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.width();
+                        sy2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.width();
+                    }
+                    else
+                    {
+                        sx2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.height();
+                        sy2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.height();
+                    }
+
+                }
+                else
+                {
+                    sx1 = sprites.at(spriteNo).x * tileSize.width();
+                    sy1 = sprites.at(spriteNo).y * tileSize.height();
+
+                    if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
+                    {
+                        sx2 = (sprites.at(spriteNo).x + sprites.at(spriteNo).size.height()) * tileSize.width();
+                        sy2 = (sprites.at(spriteNo).y + sprites.at(spriteNo).size.width()) * tileSize.height();
+                    }
+                    else
+                    {
+                        sx2 = (sprites.at(spriteNo).x + sprites.at(spriteNo).size.width()) * tileSize.width();
+                        sy2 = (sprites.at(spriteNo).y + sprites.at(spriteNo).size.height()) * tileSize.height();
+                    }
+
+
+                }
+
+
+                if ((mx >= sx1) && (mx < sx2) && (my >= sy1) && (my < sy2))
+                    break;
+            }
+
+            if (spriteNo == sprites.size())
+            {
+                mouseOverTile = QRect();
+                if (e->buttons() != Qt::LeftButton)
+                {
+                    if (spriteToMove != -1)
+                        emit spriteSelected(-1);
+                    spriteToMove = -1;
+                    update();
+                    return;
+                }
             }
             else
             {
-                sx1 = sprites.at(spriteNo).x * tileSize.width();
-                sx2 = (sprites.at(spriteNo).x + sprites.at(spriteNo).size.width()) * tileSize.width();
-                sy1 = sprites.at(spriteNo).y * tileSize.height();
-                sy2 = (sprites.at(spriteNo).y + sprites.at(spriteNo).size.height()) * tileSize.height();
+                if (spriteToMove != spriteNo)
+                    emit spriteSelected(spriteNo);
+                spriteToMove = spriteNo;
             }
 
-            if ((mx >= sx1) && (mx < sx2) && (my >= sy1) && (my < sy2))
-                break;
-        }
-
-        if (spriteNo == sprites.size())
-        {
-            mouseOverTile = QRect();
-            if (e->buttons() != Qt::LeftButton)
-            {
-                spriteToMove = -1;
-                update();
-                return;
-            }
         }
         else
-            spriteToMove = spriteNo;
+        {
+            if (sprites.at(spriteToMove).pixelPerfect)
+            {
+                sx1 = sprites.at(spriteToMove).x;
+                sy1 = sprites.at(spriteToMove).y;
+                if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
+                {
+                    sx2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.height();
+                    sy2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.width();
+                }
+                else
+                {
+                    sx2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.width();
+                    sy2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.height();
+                }
+            }
+            else
+            {
+                sx1 = sprites.at(spriteToMove).x * tileSize.width();
+                sy1 = sprites.at(spriteToMove).y * tileSize.height();
+                if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
+                {
+                    sx2 = (sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.height()) * tileSize.width();
+                    sy2 = (sprites.at(spriteToMove).y + sprites.at(spriteToMove).size.width()) * tileSize.height();
+                }
+                else
+                {
+                    sx2 = (sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.width()) * tileSize.width();
+                    sy2 = (sprites.at(spriteToMove).y + sprites.at(spriteToMove).size.height()) * tileSize.height();
+                }
+
+            }
+
+        }
 
         if (spriteToMove == -1)
             return;
@@ -316,10 +418,12 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         if (e->button() == Qt::RightButton)
         {
             sprites.remove(spriteToMove);
-            spriteToMove = -1;
             mouseOverTile = QRect();
             dataIsChanged = true;
+            emit spriteSelected(-1);
+            emit spriteRemoved(spriteToMove);
             emit dataChanged();
+            spriteToMove = -1;
             update();
             return;
         }
@@ -366,7 +470,15 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
 
 void QTileEdit::mousePressEvent(QMouseEvent *e)
 {
+    if (e->type() == QEvent::MouseButtonPress)
+        mousePressed = true;
+
     mouseMoveEvent(e);
+}
+
+void QTileEdit::mouseReleaseEvent(QMouseEvent *)
+{
+    mousePressed = false;
 }
 
 void QTileEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int limitTileCount)

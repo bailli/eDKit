@@ -39,9 +39,9 @@
 
 struct QDKSprite : QSprite
 {
-    //quint8 tile;
     quint16 ramPos;
     quint32 levelPos;
+    quint8 addFlag;
 };
 
 typedef QColor QGBPalette[4];
@@ -150,7 +150,8 @@ public slots:
     void changeTileset(int tileset);
     void changeMusic(int music);
     void changeSize(int size);
-    
+    void changeSpriteTransparency(bool transparent);
+    void addSprite(int id);
 };
 
 #endif // QDKEDIT_H
@@ -208,4 +209,19 @@ c6
 c8
 ca
 cc
+
+from add sprite data:
+54
+5C
+5E
+6E
+70 <-- new; but elevator "tiles"
+72 <-- new; but elevator "tiles"
+7F
+80
+84
+98
+9A
+B8
+CC
  */
