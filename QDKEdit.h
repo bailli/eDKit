@@ -41,7 +41,7 @@ struct QDKSprite : QSprite
 {
     quint16 ramPos;
     quint32 levelPos;
-    quint8 addFlag;
+//    quint8 addFlag;
 };
 
 typedef QColor QGBPalette[4];

@@ -150,3 +150,10 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+
+void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
+{
+    quint8 flag;
+    ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
+    qDebug() << flag;
+}

@@ -389,6 +389,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         // the sprite to this->sprite vector
         sprite.sprite = NULL;
         sprite.rotate = BOTTOM;
+        sprite.flagByte = 0;
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -411,13 +412,14 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     if (levels[id].sprites.size() > MAX_SPRITES)
         qWarning() << QString("Level %1: too many sprites! count: %2").arg(id).arg(levels[id].sprites.size());
 
-    // this not really correct...
+    // first steps towards starting direction of sprites
     if (levels[id].addSpriteData)
     {
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i+=4)
         {
             byte = (quint8)levels[id].rawAddSpriteData[i];
-            if ((byte == 0x00) || (byte == 0x70) || (byte == 0x72))
+
+            if ((byte != 0x7F) && (byte == 0x98) && (byte == 0x80))
                 continue;
 
             address = (quint8)levels[id].rawAddSpriteData[i+1] + (0x100 * (quint8)levels[id].rawAddSpriteData[i+2]);
@@ -426,8 +428,12 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
             for (int j = 0; j < levels[id].sprites.size(); j++)
                 if (levels[id].sprites.at(j).ramPos == address)
                 {
-                    levels[id].sprites[j].addFlag = flag;
-                    levels[id].sprites[j].rotate = flag;
+                    levels[id].sprites[j].flagByte = flag;
+
+                    if (byte == 0x7F)
+                        levels[id].sprites[j].rotate = flag;
+                    else
+                        levels[id].sprites[j].rotate = ((flag+1) & 1);
                     break;
                 }
         }
@@ -1579,6 +1585,7 @@ void QDKEdit::addSprite(int id)
     sprite.x = 0;
     sprite.y = 0;
     sprite.rotate = BOTTOM;
+    sprite.flagByte = 0;
     sprite.size = QSize(tiles[id].w, tiles[id].h);
 
     if (tiles[id].setSpecific)

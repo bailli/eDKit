@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QtGui/QListWidgetItem>
 
 #define BASE_ROM "base.gb"
 
@@ -28,6 +29,8 @@ private slots:
     void removeSprite(int index);
 
     void addNewSprite(QAction *action);
+
+    void on_lstSprites_itemDoubleClicked(QListWidgetItem *item);
 
 private:
     Ui::MainWindow *ui;
