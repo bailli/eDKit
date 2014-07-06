@@ -85,6 +85,7 @@ QDKEdit::QDKEdit(QWidget *parent) :
 
     getMouse(true);
     connect(this, SIGNAL(singleTileChanged(int,int,int)), this, SLOT(checkForLargeTile(int,int,int)));
+    connect(this, SIGNAL(flagByteChanged(int)), this, SLOT(updateSprite(int)));
 }
 
 QDKEdit::~QDKEdit()
@@ -385,11 +386,11 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.pixelPerfect = false;
         sprite.x = sprite.levelPos % 32;
         sprite.y = sprite.levelPos / 32;
-        // we set the correct pointer when we copy
-        // the sprite to this->sprite vector
         sprite.sprite = NULL;
         sprite.rotate = BOTTOM;
         sprite.flagByte = 0;
+        if ((sprite.id == 0x80) || (sprite.id == 0x98))
+            sprite.flagByte = 0x03;
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -407,7 +408,6 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     spr.rotate = BOTTOM;
     spr.size = QSize(tiles[0x80].w, tiles[0x80].h);
     levels[id].sprites.append(spr);*/
-
 
     if (levels[id].sprites.size() > MAX_SPRITES)
         qWarning() << QString("Level %1: too many sprites! count: %2").arg(id).arg(levels[id].sprites.size());
@@ -1595,6 +1595,17 @@ void QDKEdit::addSprite(int id)
 
     sprites.append(sprite);
     emit spriteAdded(QString("Sprite 0x%1").arg(id, 2, 16, QChar('0')));
+    update();
+}
+
+void QDKEdit::updateSprite(int num)
+{
+    //check for rotation
+    if (sprites.at(num).id == 0x7F)
+        sprites[num].rotate = sprites.at(num).flagByte;
+    else if ((sprites.at(num).id == 0x80) || (sprites.at(num).id == 0x98))
+        sprites[num].rotate = (sprites.at(num).flagByte + 1) & 1;
+
     update();
 }
 

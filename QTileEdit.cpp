@@ -523,14 +523,16 @@ void QTileEdit::toggleSpriteMode(int enabled)
     toggleSpriteMode((bool)enabled);
 }
 
-void QTileEdit::getSpriteFlag(int id, quint8 *flag)
+void QTileEdit::getSpriteFlag(int num, quint8 *flag)
 {
-    if (id < sprites.size())
-        *flag = sprites.at(id).flagByte;
+    if (num < sprites.size())
+        *flag = sprites.at(num).flagByte;
 }
 
-void QTileEdit::setSpriteFlag(int id, quint8 flag)
+void QTileEdit::setSpriteFlag(int num, quint8 flag)
 {
-    if (id < sprites.size())
-        sprites[id].flagByte = flag;
+    if (num < sprites.size())
+        sprites[num].flagByte = flag;
+
+    emit flagByteChanged(num);
 }

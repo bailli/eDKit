@@ -17,6 +17,9 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
+
+private:
+    void spriteContextMenu(QListWidgetItem *item, QPoint globalPos);
     
 private slots:
     void updateText();
@@ -27,8 +30,8 @@ private slots:
     void selectSprite(int num);
     void addSprite(QString sprite);
     void removeSprite(int index);
-
     void addNewSprite(QAction *action);
+    void on_lstSprites_customContextMenuRequested(const QPoint &pos);
 
     void on_lstSprites_itemDoubleClicked(QListWidgetItem *item);
 

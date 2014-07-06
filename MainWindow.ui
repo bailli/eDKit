@@ -112,6 +112,9 @@
         <height>220</height>
        </rect>
       </property>
+      <property name="contextMenuPolicy">
+       <enum>Qt::CustomContextMenu</enum>
+      </property>
      </widget>
      <widget class="QToolButton" name="toolButton">
       <property name="geometry">

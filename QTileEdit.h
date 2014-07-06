@@ -15,7 +15,7 @@ struct QSprite
     QPixmap *sprite;
     int rotate;
     int id;
-    quint8 flagByte;
+    quint8 flagByte;    
 };
 
 class QTileEdit : public QWidget
@@ -84,14 +84,15 @@ signals:
     void spriteSelected(int spriteNo);
     void spriteAdded(QString sprite);
     void spriteRemoved(int index);
+    void flagByteChanged(int num);
 
 public slots:
     void updateLevel();
     void setTileToDraw(int tileNumber);
     void toggleSpriteMode(bool enabled);
     void toggleSpriteMode(int enabled);
-    void getSpriteFlag(int id, quint8 *flag);
-    void setSpriteFlag(int id, quint8 flag);
+    void getSpriteFlag(int num, quint8 *flag);
+    void setSpriteFlag(int num, quint8 flag);
 };
 
 #endif // QTILEEDIT_H

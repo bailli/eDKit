@@ -6,6 +6,7 @@
 #include <QtCore/QDebug>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QInputDialog>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -156,4 +157,68 @@ void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
     quint8 flag;
     ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
     qDebug() << flag;
+}
+
+void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
+{
+    quint8 flag;
+    quint8 spriteID = item->text().mid(9,2).toInt(0, 16);
+    ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
+
+    QMenu *menu = new QMenu();
+
+    //sprites that may get flipped
+    if ((spriteID == 0x7F) || (spriteID == 0x98) || (spriteID == 0x80))
+    {
+        menu->addAction("Flip sprite");
+    }
+
+    if ((spriteID == 0x80) || (spriteID == 0x98))
+    {
+        menu->addAction(QString("Change speed (%1)").arg(flag >> 1));
+    }
+
+    if (menu->actions().size() > 0)
+    {
+        QAction *selected = menu->exec(globalPos);
+        if (selected != NULL)
+        {
+            if (selected->text().startsWith("Flip sprite"))
+            {
+                if (spriteID == 0x7F)
+                {
+                    if (flag == 0x00)
+                        flag = 0x01;
+                    else
+                        flag = 0x00;
+                }
+
+                if ((spriteID == 0x80) || (spriteID == 0x98))
+                {
+                    if ((flag & 1) == 0x01)
+                        flag ^= 1;
+                    else
+                        flag |= 1;
+                }
+            }
+            else if (selected->text().startsWith("Change speed"))
+            {
+                quint8 newSpeed = QInputDialog::getInt(this, "Sprite property", "Running speed:", (flag / 2), 0, 127);
+                flag = (newSpeed * 2) | (flag & 1);
+            }
+            else
+                qWarning() << QString("Unhandled context menu selection: %1").arg(selected->text());
+
+            ui->lvlEdit->setSpriteFlag(ui->lstSprites->row(item), flag);
+        }
+    }
+}
+
+void MainWindow::on_lstSprites_customContextMenuRequested(const QPoint &pos)
+{
+    QListWidgetItem *item = ui->lstSprites->itemAt(pos);
+    if (item == NULL)
+        return;
+
+    spriteContextMenu(item, ui->lstSprites->mapToGlobal(pos));
 }

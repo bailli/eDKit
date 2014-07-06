@@ -141,6 +141,7 @@ signals:
 
 private slots:
     void checkForLargeTile(int x, int y, int drawnTile);
+    void updateSprite(int num);
     
 public slots:
     void changeLevel(int id);
