@@ -47,6 +47,7 @@ QDKEdit::QDKEdit(QWidget *parent) :
     currentLevel = -1;
     dataIsChanged = false;
     tileDataIs16bit = true;
+    spriteContext = true;
 
     lvlData.resize(0x280*2);
     for (int i = 0; i < 0x280*2; i+=2)
@@ -389,6 +390,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.sprite = NULL;
         sprite.rotate = BOTTOM;
         sprite.flagByte = 0;
+        //default values
         if ((sprite.id == 0x80) || (sprite.id == 0x98))
             sprite.flagByte = 0x03;
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
@@ -396,18 +398,6 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
         in >> byte;
     }
-
-    /*QDKSprite spr;
-    spr.id = 0x80;
-    spr.ramPos = 0xDC63;
-    spr.levelPos = spr.ramPos - 0xDA75;
-    spr.pixelPerfect = false;
-    spr.x = spr.levelPos % 32;
-    spr.y = spr.levelPos / 32;
-    spr.sprite = NULL;
-    spr.rotate = BOTTOM;
-    spr.size = QSize(tiles[0x80].w, tiles[0x80].h);
-    levels[id].sprites.append(spr);*/
 
     if (levels[id].sprites.size() > MAX_SPRITES)
         qWarning() << QString("Level %1: too many sprites! count: %2").arg(id).arg(levels[id].sprites.size());
@@ -419,7 +409,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         {
             byte = (quint8)levels[id].rawAddSpriteData[i];
 
-            if ((byte != 0x7F) && (byte == 0x98) && (byte == 0x80))
+            if ((byte != 0x7F) && (byte != 0x98) && (byte != 0x80) && (byte != 0x54))
                 continue;
 
             address = (quint8)levels[id].rawAddSpriteData[i+1] + (0x100 * (quint8)levels[id].rawAddSpriteData[i+2]);
@@ -432,7 +422,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
                     if (byte == 0x7F)
                         levels[id].sprites[j].rotate = flag;
-                    else
+                    else if ((byte == 0x80) || (byte = 0x98))
                         levels[id].sprites[j].rotate = ((flag+1) & 1);
                     break;
                 }
@@ -444,6 +434,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     quint32 size = src->pos() - levels[id].offset;
     src->seek(levels[id].offset);
 
+    //get palette number
     levels[id].fullData.clear();
     for (quint32 i = 0; i < size; i++)
     {
@@ -594,14 +585,6 @@ bool QDKEdit::recompressLevel(quint8 id)
         }
 
     }
-
-    /*if (id == 0x00)
-    {
-        lvl->rawAddSpriteData[4] = (quint8)0x7f;
-        lvl->rawAddSpriteData[5] = (quint8)0x63;
-        lvl->rawAddSpriteData[6] = (quint8)0xDC;
-        lvl->rawAddSpriteData[7] = (quint8)0x02;
-    }*/
 
     if (!lvl->addSpriteData)
         lvl->fullData.append(QChar(0x00));
@@ -1600,6 +1583,11 @@ void QDKEdit::addSprite(int id)
 
 void QDKEdit::updateSprite(int num)
 {
+    if (num >= sprites.size())
+        return;
+
+    dataIsChanged = true;
+
     //check for rotation
     if (sprites.at(num).id == 0x7F)
         sprites[num].rotate = sprites.at(num).flagByte;

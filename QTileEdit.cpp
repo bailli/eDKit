@@ -10,7 +10,7 @@
 #include "QTileSelector.h"
 
 QTileEdit::QTileEdit(QWidget *parent) :
-    QWidget(parent), dataIsChanged(false), mousePressed(false), emptyTile(0), tileToDraw(emptyTile), keepAspect(true), selector(NULL), tileDataIs16bit(false), spriteMode(false), spriteToMove(-1)
+    QWidget(parent), dataIsChanged(false), mousePressed(false), emptyTile(0), tileToDraw(emptyTile), keepAspect(true), selector(NULL), tileDataIs16bit(false), spriteMode(false), spriteContext(false), spriteToMove(-1)
 {
     //setMouseTracking(true);
     background = QImage(levelDimension.width()*tileSize.width(), levelDimension.height()*tileSize.height(), QImage::Format_ARGB32);
@@ -417,15 +417,24 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
 
         if (e->button() == Qt::RightButton)
         {
-            sprites.remove(spriteToMove);
-            mouseOverTile = QRect();
-            dataIsChanged = true;
-            emit spriteSelected(-1);
-            emit spriteRemoved(spriteToMove);
-            emit dataChanged();
-            spriteToMove = -1;
-            update();
-            return;
+            if (!spriteContext)
+            {
+                sprites.remove(spriteToMove);
+                mouseOverTile = QRect();
+                dataIsChanged = true;
+                emit spriteSelected(-1);
+                emit spriteRemoved(spriteToMove);
+                emit dataChanged();
+                spriteToMove = -1;
+                update();
+                return;
+            }
+            else
+            {
+                emit customContextMenuRequested(e->pos());
+                mousePressed = false;
+                return;
+            }
         }
 
         setToolTip(QString("0x%1").arg(sprites.at(spriteNo).id, 2, 16, QChar('0')));
@@ -516,6 +525,22 @@ void QTileEdit::toggleSpriteMode(bool enabled)
         spriteMode = enabled;
         update();
     }
+}
+
+void QTileEdit::deleteSprite(int num)
+{
+    if (num >= sprites.size())
+        return;
+
+    sprites.remove(num);
+
+    mouseOverTile = QRect();
+    dataIsChanged = true;
+    emit spriteSelected(-1);
+    emit spriteRemoved(num);
+    emit dataChanged();
+    spriteToMove = -1;
+    update();
 }
 
 void QTileEdit::toggleSpriteMode(int enabled)

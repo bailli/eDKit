@@ -35,6 +35,8 @@ private slots:
 
     void on_lstSprites_itemDoubleClicked(QListWidgetItem *item);
 
+    void on_lvlEdit_customContextMenuRequested(const QPoint &pos);
+
 private:
     Ui::MainWindow *ui;
 };

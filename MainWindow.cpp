@@ -173,10 +173,22 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
         menu->addAction("Flip sprite");
     }
 
+    //sprites with walking speed property
     if ((spriteID == 0x80) || (spriteID == 0x98))
     {
         menu->addAction(QString("Change speed (%1)").arg(flag >> 1));
     }
+
+    //board speed
+    if (spriteID == 0x54)
+    {
+        if (!flag)
+            menu->addAction(QString("Switch speed (normal)"));
+        else
+            menu->addAction(QString("Switch speed (slow)"));
+    }
+
+    menu->addAction("Delete sprite");
 
     if (menu->actions().size() > 0)
     {
@@ -206,6 +218,20 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
                 quint8 newSpeed = QInputDialog::getInt(this, "Sprite property", "Running speed:", (flag / 2), 0, 127);
                 flag = (newSpeed * 2) | (flag & 1);
             }
+            else if (selected->text().startsWith("Switch speed"))
+            {
+                if (flag)
+                    flag = 0;
+                else
+                    flag = 1;
+            }
+            else if (selected->text().startsWith("Delete sprite"))
+            {
+                //ui->lstSprites->removeItemWidget(item);
+                //delete item;
+                ui->lvlEdit->deleteSprite(ui->lstSprites->row(item));
+                return;
+            }
             else
                 qWarning() << QString("Unhandled context menu selection: %1").arg(selected->text());
 
@@ -221,4 +247,13 @@ void MainWindow::on_lstSprites_customContextMenuRequested(const QPoint &pos)
         return;
 
     spriteContextMenu(item, ui->lstSprites->mapToGlobal(pos));
+}
+
+void MainWindow::on_lvlEdit_customContextMenuRequested(const QPoint &pos)
+{
+    QListWidgetItem *item = ui->lstSprites->currentItem();
+    if (item == NULL)
+        return;
+
+    spriteContextMenu(item, ui->lvlEdit->mapToGlobal(pos));
 }

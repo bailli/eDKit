@@ -64,6 +64,7 @@ protected:
     float scaleFactorY;
     bool dataIsChanged;
     bool tileDataIs16bit;
+    bool spriteContext;
     bool keepAspect;
     bool spriteMode;
     QRect mouseOverTile;
@@ -93,6 +94,7 @@ public slots:
     void toggleSpriteMode(int enabled);
     void getSpriteFlag(int num, quint8 *flag);
     void setSpriteFlag(int num, quint8 flag);
+    void deleteSprite(int num);
 };
 
 #endif // QTILEEDIT_H
