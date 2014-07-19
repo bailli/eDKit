@@ -432,7 +432,10 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
             else
             {
                 emit customContextMenuRequested(e->pos());
+                mouseOverTile = QRect();
                 mousePressed = false;
+                spriteToMove = -1;
+                update();
                 return;
             }
         }

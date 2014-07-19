@@ -20,7 +20,7 @@ bool QDKEdit::isSprite[] = {
     true , false, true , false, true , false, true , false,
     false, false, false, false, true , false, false, false,
     false, false, false, false, false, false, true , false,
-    false, false, false, false, false, false, false, false,
+    true, false, true, false, false, false, false, false,
     false, false, true , false, true , false, false, true ,
     true , false, false, false, true , false, true , false,
     true , false, true , false, false, false, true , false,
@@ -393,6 +393,8 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         //default values
         if ((sprite.id == 0x80) || (sprite.id == 0x98))
             sprite.flagByte = 0x03;
+        if (sprite.id == 0x84)
+            sprite.flagByte = 0x02; // this needs checking!
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -402,18 +404,43 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     if (levels[id].sprites.size() > MAX_SPRITES)
         qWarning() << QString("Level %1: too many sprites! count: %2").arg(id).arg(levels[id].sprites.size());
 
-    // first steps towards starting direction of sprites
     if (levels[id].addSpriteData)
     {
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i+=4)
         {
             byte = (quint8)levels[id].rawAddSpriteData[i];
 
-            if ((byte != 0x7F) && (byte != 0x98) && (byte != 0x80) && (byte != 0x54))
+            //this will be changed to == 0x00
+            //when all sprites are fully recognized
+            if ((byte != 0x7F) && (byte != 0x98) && (byte != 0x80) && (byte != 0x54) && (byte != 0x70) && (byte != 0x72) && (byte != 0x84))
                 continue;
 
             address = (quint8)levels[id].rawAddSpriteData[i+1] + (0x100 * (quint8)levels[id].rawAddSpriteData[i+2]);
             flag = (quint8)levels[id].rawAddSpriteData[i+3];
+
+            // elevator actually correspondes to a tile
+            if ((byte == 0x70) || (byte == 0x72))
+            {
+                if (byte == (quint8)levels[id].rawTilemap[address - 0xD44D])
+                {
+                    QDKSprite sprite;
+                    sprite.id = byte;
+                    sprite.ramPos = address;
+                    sprite.levelPos = sprite.ramPos - 0xD44D;
+                    sprite.pixelPerfect = false;
+                    sprite.x = sprite.levelPos % 32;
+                    sprite.y = sprite.levelPos / 32;
+                    sprite.sprite = NULL;
+                    sprite.rotate = BOTTOM;
+                    sprite.flagByte = flag;
+                    sprite.size = QSize(tiles[byte].w, tiles[byte].h);
+                    levels[id].sprites.append(sprite);
+
+                }
+
+                continue;
+            }
+
 
             for (int j = 0; j < levels[id].sprites.size(); j++)
                 if (levels[id].sprites.at(j).ramPos == address)
@@ -909,6 +936,12 @@ bool QDKEdit::getTileInfo(QFile *src)
             tiles[i].h = 4;
         }
 
+        if (i == 0x8E)
+        {
+            tiles[i].h = 2;
+            tiles[i].w = 2;
+        }
+
         src->seek(pointer+6);
         in >> pointer;
         // and another pointer which either points to a rombank | pointer table
@@ -1138,6 +1171,16 @@ void QDKEdit::sortSprite(QImage *sprite, int id)
     {
         swapTiles(sprite, 0, 1, 1, 0);
         swapTiles(sprite, 0, 1, 0, 2);
+    }
+
+    /* hiding monkey
+      A1 B1    A1 1A
+      A2 B2 => A2 2A
+    */
+    if (id == 0xC8)
+    {
+        copyTile(sprite, 0, 0, 1, 0, true);
+        copyTile(sprite, 0, 1, 1, 1, true);
     }
 
     /* DK
@@ -1569,6 +1612,10 @@ void QDKEdit::addSprite(int id)
     sprite.y = 0;
     sprite.rotate = BOTTOM;
     sprite.flagByte = 0;
+    if ((id == 0x80) || (id == 0x98))
+        sprite.flagByte = 0x03;
+    if (id == 0x84)
+        sprite.flagByte = 0x02; // this needs checking!
     sprite.size = QSize(tiles[id].w, tiles[id].h);
 
     if (tiles[id].setSpecific)

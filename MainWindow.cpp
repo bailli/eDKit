@@ -173,8 +173,17 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
         menu->addAction("Flip sprite");
     }
 
+    //sprites that may get flipped but should display another text ;)
+    if (spriteID == 0x84)
+    {
+        if (flag & 1)
+            menu->addAction("Flip direction (left)");
+        else
+            menu->addAction("Flip direction (right)");
+    }
+
     //sprites with walking speed property
-    if ((spriteID == 0x80) || (spriteID == 0x98))
+    if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
     {
         menu->addAction(QString("Change speed (%1)").arg(flag >> 1));
     }
@@ -195,7 +204,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
         QAction *selected = menu->exec(globalPos);
         if (selected != NULL)
         {
-            if (selected->text().startsWith("Flip sprite"))
+            if (selected->text().startsWith("Flip"))
             {
                 if (spriteID == 0x7F)
                 {
@@ -205,7 +214,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
                         flag = 0x00;
                 }
 
-                if ((spriteID == 0x80) || (spriteID == 0x98))
+                if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
                 {
                     if ((flag & 1) == 0x01)
                         flag ^= 1;
@@ -215,7 +224,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
             }
             else if (selected->text().startsWith("Change speed"))
             {
-                quint8 newSpeed = QInputDialog::getInt(this, "Sprite property", "Running speed:", (flag / 2), 0, 127);
+                quint8 newSpeed = QInputDialog::getInt(this, "Sprite property", "Running speed:", (flag >> 1), 0, 127);
                 flag = (newSpeed * 2) | (flag & 1);
             }
             else if (selected->text().startsWith("Switch speed"))
