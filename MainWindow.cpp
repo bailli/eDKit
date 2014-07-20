@@ -188,6 +188,25 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
         menu->addAction(QString("Change speed (%1)").arg(flag >> 1));
     }
 
+    //elevator time between boards and speed
+    //table @ 0x30F77
+    //flag byte selects pair from table
+    // 0x40 0x20 ; 0x60 0x20 ; 0x80 0x20 ; 0xA0 0x20
+    // 0x40 0x40 ; 0x60 0x40 ; 0x80 0x40 ; 0xA0 0x40
+    // 0x40 0x60 ; 0x60 0x60 ; 0x80 0x60 ; 0xA0 0x60
+    // 0x40 0x80 ; 0x60 0x80 ; 0x80 0x80 ; 0xA0 0x80
+    // 16 settings
+    // default is 0x60 0x40 => 0x05
+
+    // first byte is speed; second byte time between new boards
+    if ((spriteID == 0x70) || (spriteID == 0x72))
+    {
+        quint8 time, speed;
+        speed = (flag % 4) * 0x20 + 0x40;
+        time = (flag / 4) * 0x20 + 0x20;
+        menu->addAction(QString("Change elevator setting (speed %1; time %2)").arg(speed, 2, 16, QChar('0')).arg(time, 2, 16, QChar('0')));
+    }
+
     //board speed
     if (spriteID == 0x54)
     {
@@ -233,6 +252,11 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
                     flag = 0;
                 else
                     flag = 1;
+            }
+            else if (selected->text().startsWith("Change elevator"))
+            {
+                flag = QInputDialog::getInt(this, "Sprite property", "Elevator setting:", flag, 0, 15);
+                bool ok;
             }
             else if (selected->text().startsWith("Delete sprite"))
             {

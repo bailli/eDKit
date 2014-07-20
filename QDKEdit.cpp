@@ -393,8 +393,10 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         //default values
         if ((sprite.id == 0x80) || (sprite.id == 0x98))
             sprite.flagByte = 0x03;
-        if (sprite.id == 0x84)
-            sprite.flagByte = 0x02; // this needs checking!
+        //if (sprite.id == 0x84)
+            //sprite.flagByte = 0x00; // this needs checking!
+        if ((sprite.id == 0x70) || (sprite.id == 0x72))
+            sprite.flagByte = 0x05;
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -412,6 +414,12 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
             //this will be changed to == 0x00
             //when all sprites are fully recognized
+            //asm @ 0x46E6 rombank 0x0C
+            //missing keyholes from lvl95 0xB8 - flag only 00 or 01?
+            //missing DK sprites 9A 6E CC - flag only 00 or 01 ?
+            // 9A handled like 80 98 84
+            // 6E CC handled identical
+
             if ((byte != 0x7F) && (byte != 0x98) && (byte != 0x80) && (byte != 0x54) && (byte != 0x70) && (byte != 0x72) && (byte != 0x84))
                 continue;
 
@@ -1614,8 +1622,10 @@ void QDKEdit::addSprite(int id)
     sprite.flagByte = 0;
     if ((id == 0x80) || (id == 0x98))
         sprite.flagByte = 0x03;
-    if (id == 0x84)
-        sprite.flagByte = 0x02; // this needs checking!
+    //if (id == 0x84)
+        //sprite.flagByte = 0x00; // this needs checking!
+    if ((id == 0x70) || (id == 0x72))
+        sprite.flagByte = 0x05;
     sprite.size = QSize(tiles[id].w, tiles[id].h);
 
     if (tiles[id].setSpecific)

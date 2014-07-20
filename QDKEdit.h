@@ -37,6 +37,8 @@
 
 // BGP depends on tileset asm @ 0E9D
 
+#define ELEVATOR_TABLE 0x30F77
+
 struct QDKSprite : QSprite
 {
     quint16 ramPos;
