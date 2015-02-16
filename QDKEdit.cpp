@@ -389,14 +389,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.y = sprite.levelPos / 32;
         sprite.sprite = NULL;
         sprite.rotate = BOTTOM;
-        sprite.flagByte = 0;
-        //default values
-        if ((sprite.id == 0x80) || (sprite.id == 0x98))
-            sprite.flagByte = 0x03;
-        //if (sprite.id == 0x84)
-            //sprite.flagByte = 0x00; // this needs checking!
-        if ((sprite.id == 0x70) || (sprite.id == 0x72))
-            sprite.flagByte = 0x05;
+        sprite.flagByte = getSpriteDefaultFlag(byte);
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
         levels[id].sprites.append(sprite);
 
@@ -412,15 +405,16 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         {
             byte = (quint8)levels[id].rawAddSpriteData[i];
 
-            //this will be changed to == 0x00
-            //when all sprites are fully recognized
             //asm @ 0x46E6 rombank 0x0C
             //missing keyholes from lvl95 0xB8 - flag only 00 or 01?
             //missing DK sprites 9A 6E CC - flag only 00 or 01 ?
             // 9A handled like 80 98 84
             // 6E CC handled identical
 
-            if ((byte != 0x7F) && (byte != 0x98) && (byte != 0x80) && (byte != 0x54) && (byte != 0x70) && (byte != 0x72) && (byte != 0x84))
+            // the original game contains much garbage btw...
+
+            if ((byte != 0x7F) && (byte != 0x98) && (byte != 0x80) && (byte != 0x54) && (byte != 0x70) && (byte != 0x72) &&
+                (byte != 0x84) && (byte != 0xB8) && (byte != 0x9A) && (byte != 0x6E) && (byte != 0xCC))
                 continue;
 
             address = (quint8)levels[id].rawAddSpriteData[i+1] + (0x100 * (quint8)levels[id].rawAddSpriteData[i+2]);
@@ -431,6 +425,8 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
             {
                 if (byte == (quint8)levels[id].rawTilemap[address - 0xD44D])
                 {
+                    //we found a correct tile
+                    //so we need a new sprite
                     QDKSprite sprite;
                     sprite.id = byte;
                     sprite.ramPos = address;
@@ -449,15 +445,17 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
                 continue;
             }
 
-
+            // these sprites may get mirrored
             for (int j = 0; j < levels[id].sprites.size(); j++)
                 if (levels[id].sprites.at(j).ramPos == address)
                 {
                     levels[id].sprites[j].flagByte = flag;
 
+                    //actually the game engine takes 0x7F sprite properties
+                    //without checking the RAM address...
                     if (byte == 0x7F)
                         levels[id].sprites[j].rotate = flag;
-                    else if ((byte == 0x80) || (byte = 0x98))
+                    else if ((byte == 0x80) || (byte == 0x98))
                         levels[id].sprites[j].rotate = ((flag+1) & 1);
                     break;
                 }
@@ -550,6 +548,19 @@ bool QDKEdit::readSGBPalettes(QFile *src)
     return true;
 }
 
+void QDKEdit::rebuildAddSpriteData(int id)
+{
+    QDKLevel *lvl = &levels[id];
+
+    /*lvl->rawAddSpriteData.clear();
+    lvl->rawAddSpriteData.resize(0x40);
+
+    for (int i = 0; i < lvl->sprites.size(); i++)
+    {
+
+    }*/
+}
+
 bool QDKEdit::recompressLevel(quint8 id)
 {
     QDKLevel *lvl = &levels[id];
@@ -558,6 +569,9 @@ bool QDKEdit::recompressLevel(quint8 id)
 
     if (lvl->fullDataUpToDate)
         return true;
+
+    //rebuild sprite properties aka additional sprite data
+    rebuildAddSpriteData(id);
 
     // delete old data
     lvl->fullData.clear();
@@ -621,6 +635,8 @@ bool QDKEdit::recompressLevel(quint8 id)
 
     }
 
+
+
     if (!lvl->addSpriteData)
         lvl->fullData.append(QChar(0x00));
     else // compress additional sprite data (same as above)
@@ -674,6 +690,10 @@ bool QDKEdit::recompressLevel(quint8 id)
     // add sprite tiles+ram position
     for (int i = 0; i < lvl->sprites.size(); i++)
     {
+        // do not add the pseudo elevator sprite
+        if ((lvl->sprites.at(i).id == 0x70) || (lvl->sprites.at(i).id == 0x72))
+            continue;
+
         lvl->fullData.append((quint8)lvl->sprites.at(i).id);
         byte = lvl->sprites.at(i).ramPos % 0x100;
         lvl->fullData.append(byte);
@@ -1619,13 +1639,7 @@ void QDKEdit::addSprite(int id)
     sprite.x = 0;
     sprite.y = 0;
     sprite.rotate = BOTTOM;
-    sprite.flagByte = 0;
-    if ((id == 0x80) || (id == 0x98))
-        sprite.flagByte = 0x03;
-    //if (id == 0x84)
-        //sprite.flagByte = 0x00; // this needs checking!
-    if ((id == 0x70) || (id == 0x72))
-        sprite.flagByte = 0x05;
+    sprite.flagByte = getSpriteDefaultFlag(id);
     sprite.size = QSize(tiles[id].w, tiles[id].h);
 
     if (tiles[id].setSpecific)
@@ -1636,6 +1650,25 @@ void QDKEdit::addSprite(int id)
     sprites.append(sprite);
     emit spriteAdded(QString("Sprite 0x%1").arg(id, 2, 16, QChar('0')));
     update();
+}
+
+quint8 QDKEdit::getSpriteDefaultFlag(int id)
+{
+    switch (id)
+    {
+        case 0x80: case 0x98: return 0x03;
+        // case 0x84: return 0x02; this is wrong 0x00 seems correct
+        case 0x70: case 0x72: return 0x05;
+        case 0x6E: //probably 0x00
+        case 0x9A: // even more guessed 0x00
+        case 0x00: // this one at least is never set explicitly
+        default: return 0x00;
+    }
+
+    /*set in game: 6E 00
+                   9A 01 00
+                   CC 01
+                   B8 00 01 */
 }
 
 void QDKEdit::updateSprite(int num)
@@ -1661,6 +1694,8 @@ void QDKEdit::saveLevel()
         levels[currentLevel].fullDataUpToDate = false;
         levels[currentLevel].displayTilemap.clear();
         levels[currentLevel].displayTilemap.append(lvlData);
+        updateRawTilemap(currentLevel);
+        expandRawTilemap(currentLevel);
         levels[currentLevel].sprites.clear();
         for (int i = 0; i < sprites.size(); i++)
         {
@@ -1750,7 +1785,41 @@ QString QDKEdit::getLevelInfo()
 
     if (levels[id].switchData) // 0x11 + 0x90 bytes
     {
-        tmp = "Switch data:";
+        for (int i = 8; i > 0; i--)
+        {
+            if (!(levels[id].rawSwitchData[0] & (1 << (i-1))))
+                continue;
+
+            quint8 connectedObjectFlags = levels[id].rawSwitchData[i];
+            quint8 switchState = levels[id].rawSwitchData[8+i];
+            quint16 switchPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + 1]) - 0xD44D;
+
+            tmp = "--- ";
+            for (int j = 8; j > 0; j--)
+            {
+                quint8 flag = connectedObjectFlags & (1 << (j-1));
+                if (!flag)
+                    continue;
+
+                quint16 objPos;
+                if ((quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1] < 0xDA) //tile
+                {
+                    objPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1]) - 0xD44D;
+                    tmp += QString("tile at %1x%2; ").arg(objPos % 0x20). arg(objPos / 0x20);
+                }
+                else //sprite
+                {
+                    objPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1]) - 0xDA75;
+                    tmp += QString("sprite at %1x%2; ").arg(objPos % 0x20). arg(objPos / 0x20);
+                }
+            }
+
+            str += QString("Switch %1 (state %2); pos %4x%5; connected to\n").arg(i).arg(switchState).arg(switchPos % 0x20).arg(switchPos / 0x20);
+            str += tmp + "\n";
+
+        }
+
+        tmp = "RAW switch data:";
         for (int i = 0; i < levels[id].rawSwitchData.size(); i++)
         {
             if (i % 16 == 0)

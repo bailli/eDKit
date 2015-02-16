@@ -116,6 +116,8 @@ private:
     QMap<QString, QPixmap *> spritePix;
     QMap<QString, QImage *> spriteImg;
     void updateTileset();
+    quint8 getSpriteDefaultFlag(int id);
+    void rebuildAddSpriteData(int id);
 
     QDKLevel levels[MAX_LEVEL_ID];
     QImage tilesets[MAX_TILESETS];

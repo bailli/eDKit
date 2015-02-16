@@ -274,7 +274,7 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         int xTile= (float)e->x() / (float)tileSize.width() / scaleFactorX;
         int yTile = (float)e->y() / (float)tileSize.height() / scaleFactorY;
 
-        setToolTip(QString("0x%1").arg(getTile(xTile, yTile), 2*((int)tileDataIs16bit+1), 16, QChar('0')));
+        setToolTip(QString("0x%1 - x: %2 y: %3").arg(getTile(xTile, yTile), 2*((int)tileDataIs16bit+1), 16, QChar('0')).arg(xTile).arg(yTile));
 
         QRect newSelection(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
 

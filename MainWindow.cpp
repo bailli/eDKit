@@ -169,9 +169,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
 
     //sprites that may get flipped
     if ((spriteID == 0x7F) || (spriteID == 0x98) || (spriteID == 0x80))
-    {
         menu->addAction("Flip sprite");
-    }
 
     //sprites that may get flipped but should display another text ;)
     if (spriteID == 0x84)
@@ -184,9 +182,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
 
     //sprites with walking speed property
     if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
-    {
         menu->addAction(QString("Change speed (%1)").arg(flag >> 1));
-    }
 
     //elevator time between boards and speed
     //table @ 0x30F77
@@ -215,6 +211,9 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
         else
             menu->addAction(QString("Switch speed (slow)"));
     }
+
+    if ((spriteID == 0xB8) || (spriteID == 0x6E) || (spriteID == 0x9A) || (spriteID == 0xCC))
+        menu->addAction(QString("Edit flag byte (%1)").arg(flag));
 
     menu->addAction("Delete sprite");
 
@@ -256,14 +255,15 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
             else if (selected->text().startsWith("Change elevator"))
             {
                 flag = QInputDialog::getInt(this, "Sprite property", "Elevator setting:", flag, 0, 15);
-                bool ok;
             }
             else if (selected->text().startsWith("Delete sprite"))
             {
-                //ui->lstSprites->removeItemWidget(item);
-                //delete item;
                 ui->lvlEdit->deleteSprite(ui->lstSprites->row(item));
                 return;
+            }
+            else if (selected->text().startsWith("Edit"))
+            {
+                flag = QInputDialog::getInt(this, "Sprite property", "Key hole flag byte:", flag, 0, 255);
             }
             else
                 qWarning() << QString("Unhandled context menu selection: %1").arg(selected->text());
