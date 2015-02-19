@@ -83,7 +83,7 @@ signals:
     void dataChanged();
     void singleTileChanged(int x, int y, int drawnTile);
     void spriteSelected(int spriteNo);
-    void spriteAdded(QString sprite);
+    void spriteAdded(QString text, int id);
     void spriteRemoved(int index);
     void flagByteChanged(int num);
 

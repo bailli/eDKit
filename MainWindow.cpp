@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->ckbTransparency, SIGNAL(clicked(bool)), ui->lvlEdit, SLOT(changeSpriteTransparency(bool)));
     connect(ui->lvlEdit, SIGNAL(spriteSelected(int)), this, SLOT(selectSprite(int)));
-    connect(ui->lvlEdit, SIGNAL(spriteAdded(QString)), this, SLOT(addSprite(QString)));
+    connect(ui->lvlEdit, SIGNAL(spriteAdded(QString, int)), this, SLOT(addSprite(QString, int)));
     connect(ui->lvlEdit, SIGNAL(spriteRemoved(int)), this, SLOT(removeSprite(int)));
 
     if ((qApp->arguments().size() > 1) && (QFile::exists(qApp->arguments().at(1))))
@@ -63,9 +63,12 @@ MainWindow::MainWindow(QWidget *parent) :
     QDir dir("sprites/");
     QStringList list = dir.entryList(QStringList("*.png"), QDir::Files, QDir::Name);
 
+    QAction *action;
     for (int i = 0; i < list.size(); i++)
     {
-        newSpriteMenu->addAction(QIcon("sprites/" + list.at(i)), "Sprite 0x" + list.at(i).mid(7,2));
+        action = new QAction(QIcon("sprites/" + list.at(i)), ui->lvlEdit->spriteNumToString(list.at(i).mid(7,2).toInt(0, 16)), newSpriteMenu);
+        action->setStatusTip(list.at(i).mid(7,2));
+        newSpriteMenu->addAction(action);
         if (list.at(i).contains("set", Qt::CaseInsensitive))
             i+=0x21;
     }
@@ -79,9 +82,15 @@ void MainWindow::selectSprite(int num)
     ui->lstSprites->setCurrentRow(num);
 }
 
-void MainWindow::addSprite(QString sprite)
+void MainWindow::addSprite(QString text, int id)
 {
-    ui->lstSprites->addItem(sprite);
+    QString icon = QString("sprites/sprite_%1.png").arg(id, 2, 16, QChar('0'));
+    if (!QFile::exists(icon))
+        icon = QString("sprites/sprite_%1_set_00.png").arg(id, 2, 16, QChar('0'));
+    QListWidgetItem *item = new QListWidgetItem(QIcon(icon), text);
+    item->setToolTip(text);
+    item->setStatusTip(QString("%1").arg(id, 2, 16, QChar('0')));
+    ui->lstSprites->addItem(item);
 }
 
 void MainWindow::removeSprite(int index)
@@ -143,7 +152,7 @@ void MainWindow::SaveROM()
 
 void MainWindow::addNewSprite(QAction *action)
 {
-    ui->lvlEdit->addSprite(action->text().mid(9,2).toInt(0, 16));
+    ui->lvlEdit->addSprite(action->statusTip().toInt(0, 16));
 }
 
 MainWindow::~MainWindow()
@@ -162,7 +171,7 @@ void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
 void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
 {
     quint8 flag;
-    quint8 spriteID = item->text().mid(9,2).toInt(0, 16);
+    quint8 spriteID = item->statusTip().toInt(0, 16);
     ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
 
     QMenu *menu = new QMenu();

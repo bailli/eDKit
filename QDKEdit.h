@@ -96,6 +96,7 @@ public:
     bool loadAllLevels(QString romFile);
     bool saveAllLevels(QString romFile);
     QString getLevelInfo();
+    QString spriteNumToString(int sprite);
 
 private:
     QByteArray LZSSDecompress(QDataStream *in, quint16 decompressedSize);

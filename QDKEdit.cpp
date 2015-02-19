@@ -1648,7 +1648,7 @@ void QDKEdit::addSprite(int id)
        sprite.sprite = spritePix[QString("sprite_%1.png").arg(id, 2, 16, QChar('0'))];
 
     sprites.append(sprite);
-    emit spriteAdded(QString("Sprite 0x%1").arg(id, 2, 16, QChar('0')));
+    emit spriteAdded(spriteNumToString(id), id);
     update();
 }
 
@@ -1685,6 +1685,68 @@ void QDKEdit::updateSprite(int num)
         sprites[num].rotate = (sprites.at(num).flagByte + 1) & 1;
 
     update();
+}
+
+
+QString QDKEdit::spriteNumToString(int sprite)
+{
+  switch (sprite)
+  {
+
+  case 0x3a: return "Donkey Kong (crocodiles)";
+  case 0x44: return "Donkey Kong (Lvl 0-2)";
+  case 0x47: return "Crushing stone";
+  case 0x48: return "Octopus";
+  case 0x4d: return "Squid";
+  case 0x4e: return "Fish";
+  case 0x4f: return "Bat";
+  case 0x50: return "Walrus";
+  case 0x54: return "Board";
+  case 0x57: return "Hammer";
+  case 0x58: return "Skull";
+  case 0x5a: return "Hermit crab";
+  case 0x5c: return "Oil drum flames";
+  case 0x5e: return "Donkey Kong (fireballs)";
+  case 0x64: return "Enemy";
+  case 0x6e: return "Donkey Kong (barrels)";
+  case 0x70: return "Elevator up";
+  case 0x72: return "Elevator down";
+  case 0x7a: return "Giant DK";
+  case 0x7c: return "Flame";
+  case 0x7f: return "Mario";
+  case 0x80: return "Wall-walking enemy";
+  case 0x84: return "Floating platform";
+  case 0x86: return "Walking enemy";
+  case 0x88: return "Knight";
+  case 0x8a: return "Donkey Kong (Egyptian/rock guys)";
+  case 0x8e: return "Wind";
+  case 0x90: return "Donkey Kong (spring)";
+  case 0x92: return "Donkey Kong (barrels left/right)";
+  case 0x94: return "Climbable monkey";
+  case 0x96: return "Falling icicle";
+  case 0x98: return "Wall-walking enemy #2";
+  case 0x9a: return "Donkey Kong (avalanche)";
+  case 0x9d: return "Fruit";
+  case 0xa2: return "Frog";
+  case 0xa4: return "Donkey Kong (boulders)";
+  case 0xa6: return "Donkey Kong (idle)";
+  case 0xa8: return "DK Junior (mushrooms/screen edge)";
+  case 0xaa: return "Donkey Kong (mushrooms)";
+  case 0xac: return "Trash can enemy";
+  case 0xae: return "Trash can";
+  case 0xb0: return "Walking block";
+  case 0xb6: return "Klaptrap";
+  case 0xb8: return "Key";
+  case 0xba: return "Oil can";
+  case 0xbe: return "Donkey Kong (pick-up barrels)";
+  case 0xc0: return "Panser";
+  case 0xc2: return "Pauline";
+  case 0xc6: return "DK Junior (idle)";
+  case 0xc8: return "Backstabber";
+  case 0xca: return "DK Junior (mushrooms)";
+  case 0xcc: return "Donkey Kong (pick-up barrels)";
+  default: return QString("Sprite 0x%1").arg(sprite, 2, 16, QChar('0'));
+  }
 }
 
 void QDKEdit::saveLevel()
@@ -1751,9 +1813,9 @@ void QDKEdit::changeLevel(int id)
         sprites.append(levels[currentLevel].sprites.at(i));
         if (tiles[sprites[i].id].setSpecific)
            sprites[i].sprite = spritePix[QString("sprite_%1_set_%2.png").arg(sprites.at(i).id, 2, 16, QChar('0')).arg(currentTileset, 2, 16, QChar('0'))];
-       else
+        else
            sprites[i].sprite = spritePix[QString("sprite_%1.png").arg(sprites.at(i).id, 2, 16, QChar('0'))];
-        emit spriteAdded(QString("Sprite 0x%1").arg(sprites[i].id, 2, 16, QChar('0')));
+        emit spriteAdded(spriteNumToString(sprites[i].id), sprites[i].id);
     }
 
     update();
