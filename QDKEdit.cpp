@@ -1687,13 +1687,12 @@ void QDKEdit::updateSprite(int num)
     update();
 }
 
-
 QString QDKEdit::spriteNumToString(int sprite)
 {
   switch (sprite)
   {
 
-  case 0x3a: return "Donkey Kong (crocodiles)";
+  case 0x3a: return "Donkey Kong (Klaptraps)";
   case 0x44: return "Donkey Kong (Lvl 0-2)";
   case 0x47: return "Crushing stone";
   case 0x48: return "Octopus";
@@ -1729,7 +1728,7 @@ QString QDKEdit::spriteNumToString(int sprite)
   case 0x9d: return "Fruit";
   case 0xa2: return "Frog";
   case 0xa4: return "Donkey Kong (boulders)";
-  case 0xa6: return "Donkey Kong (idle)";
+  case 0xa6: return "Donkey Kong (switch)";
   case 0xa8: return "DK Junior (mushrooms/screen edge)";
   case 0xaa: return "Donkey Kong (mushrooms)";
   case 0xac: return "Trash can enemy";
@@ -1741,7 +1740,7 @@ QString QDKEdit::spriteNumToString(int sprite)
   case 0xbe: return "Donkey Kong (pick-up barrels)";
   case 0xc0: return "Panser";
   case 0xc2: return "Pauline";
-  case 0xc6: return "DK Junior (idle)";
+  case 0xc6: return "DK Junior (switch)";
   case 0xc8: return "Backstabber";
   case 0xca: return "DK Junior (mushrooms)";
   case 0xcc: return "Donkey Kong (pick-up barrels)";
