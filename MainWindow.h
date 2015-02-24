@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QtGui/QListWidgetItem>
+#include <QListWidgetItem>
 
 #define BASE_ROM "base.gb"
 
