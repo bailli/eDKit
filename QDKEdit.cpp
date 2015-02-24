@@ -462,6 +462,49 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         }
     }
 
+    if (levels[id].switchData)
+    {
+        for (int i = 8; i > 0; i--)
+        {
+            if (!(levels[id].rawSwitchData[0] & (1 << (i-1))))
+                continue;
+
+            QDKSwitch newSwitch;
+            quint8 connectedObjectFlags = levels[id].rawSwitchData[i];
+            newSwitch.state = levels[id].rawSwitchData[8+i];
+            newSwitch.ramPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + 1]);
+            newSwitch.levelPos = newSwitch.ramPos - 0xD44D;
+            newSwitch.x = newSwitch.levelPos % 0x20;
+            newSwitch.y = newSwitch.levelPos / 0x20;
+
+            for (int j = 8; j > 0; j--)
+            {
+                if (!(connectedObjectFlags & (1 << (j-1))))
+                    continue;
+
+                QDKSwitchObject newObj;
+                newObj.ramPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1]);
+                if (newObj.ramPos < 0xDA00) //tile
+                {
+                    newObj.isSprite = false;
+                    newObj.levelPos = newObj.ramPos - 0xD44D;
+                }
+                else
+                {
+                    newObj.isSprite = true;
+                    newObj.levelPos = newObj.ramPos - 0xDA75;
+                }
+
+                newObj.x = newObj.levelPos % 0x20;
+                newObj.y = newObj.levelPos / 0x20;
+
+                newSwitch.connectedTo.append(newObj);
+            }
+
+            levels[id].switches.append(newSwitch);
+        }
+    }
+
     //copy the full raw data
     //no need to recompress if level data needs to be relocated
     quint32 size = src->pos() - levels[id].offset;
@@ -548,17 +591,93 @@ bool QDKEdit::readSGBPalettes(QFile *src)
     return true;
 }
 
+void QDKEdit::rebuildSwitchData(int id)
+{
+    QDKLevel *lvl = &levels[id];
+
+    lvl->rawSwitchData.clear();
+
+    if (lvl->switches.isEmpty())
+    {
+        lvl->switchData = false;
+        return;
+    }
+
+    lvl->switchData = true;
+
+    lvl->rawSwitchData.fill((quint8)0x00, 0x11 + 0x90);
+
+    int switchCount, objCount;
+    switchCount = lvl->switches.size();
+
+    if (switchCount > 8)
+    {
+        qWarning() << QString("Level %1: More than 8 switches found! Truncated to 8!").arg(id);
+        switchCount = 8;
+    }
+
+    for (int i = 0; i < switchCount; i++)
+    {
+        //switch state
+        lvl->rawSwitchData[i + 9] = lvl->switches.at(switchCount-i-1).state;
+        //switch address
+        lvl->rawSwitchData[17 + (i * 18)] = (quint8)(lvl->switches.at(switchCount-i-1).ramPos % 0x100);
+        lvl->rawSwitchData[17 + (i * 18) + 1] = (quint8)(lvl->switches.at(switchCount-i-1).ramPos / 0x100);
+
+        objCount = lvl->switches.at(switchCount-i-1).connectedTo.size();
+        if (objCount > 8)
+        {
+            qWarning() << QString("Level %1: More than 8 connected objects for switch %2! Truncated to 8!").arg(id).arg(switchCount-i-1);
+            objCount = 8;
+        }
+
+        for (int j = 0; j < objCount; j++)
+        {
+            //object addresses
+            lvl->rawSwitchData[17 + (i * 18) + (2*j) + 2] = (quint8)(lvl->switches.at(switchCount-i-1).connectedTo.at(objCount-j-1).ramPos % 0x100);
+            lvl->rawSwitchData[17 + (i * 18) + (2*j) + 3] = (quint8)(lvl->switches.at(switchCount-i-1).connectedTo.at(objCount-j-1).ramPos / 0x100);
+        }
+        //object use flag
+        lvl->rawSwitchData[i + 1] = (1 << lvl->switches.at(switchCount-i-1).connectedTo.size()) - 1;
+    }
+    //switch use flag
+    lvl->rawSwitchData[0] = (1 << lvl->switches.size()) - 1;
+}
+
 void QDKEdit::rebuildAddSpriteData(int id)
 {
     QDKLevel *lvl = &levels[id];
 
-    /*lvl->rawAddSpriteData.clear();
-    lvl->rawAddSpriteData.resize(0x40);
+    lvl->rawAddSpriteData.clear();
+    lvl->rawAddSpriteData.fill((quint8)0x00, 0x40);
+    lvl->addSpriteData = true;
 
-    for (int i = 0; i < lvl->sprites.size(); i++)
+    int flagCount = 0;
+
+    for (int i = lvl->sprites.size() - 1; i >= 0; i--)
     {
+        if (lvl->sprites.at(i).flagByte != getSpriteDefaultFlag(lvl->sprites.at(i).id))
+        {
+            if (flagCount >= 0x20)
+            {
+                qWarning() << QString("Level %1: More than 32 sprites with initialized flag byte! Truncated to 32!").arg(id);
+                break;
+            }
+            //IdLo HiFb
+            lvl->rawAddSpriteData[flagCount * 4] = (quint8)lvl->sprites.at(i).id;
+            lvl->rawAddSpriteData[flagCount * 4 + 1] = (quint8)(lvl->sprites.at(i).ramPos % 0x100);
+            lvl->rawAddSpriteData[flagCount * 4 + 2] = (quint8)(lvl->sprites.at(i).ramPos / 0x100);
+            lvl->rawAddSpriteData[flagCount * 4 + 3] = (quint8)lvl->sprites.at(i).flagByte;
 
-    }*/
+            flagCount++;
+        }
+    }
+
+    if (!flagCount)
+    {
+        lvl->rawAddSpriteData.clear();
+        lvl->addSpriteData = false;
+    }
 }
 
 bool QDKEdit::recompressLevel(quint8 id)
@@ -572,6 +691,9 @@ bool QDKEdit::recompressLevel(quint8 id)
 
     //rebuild sprite properties aka additional sprite data
     rebuildAddSpriteData(id);
+
+    //rebuild switch connections
+    rebuildSwitchData(id);
 
     // delete old data
     lvl->fullData.clear();
@@ -1656,19 +1778,21 @@ quint8 QDKEdit::getSpriteDefaultFlag(int id)
 {
     switch (id)
     {
-        case 0x80: case 0x98: return 0x03;
-        // case 0x84: return 0x02; this is wrong 0x00 seems correct
-        case 0x70: case 0x72: return 0x05;
-        case 0x6E: //probably 0x00
-        case 0x9A: // even more guessed 0x00
-        case 0x00: // this one at least is never set explicitly
+        case 0x80: case 0x98: return 0x03; // walking friend+enemy
+        case 0x70: case 0x72: return 0x05; // elevator up/down
+        case 0x54: case 0x84: return 0x00;
+        case 0x7F:            return 0x00; // Mario
+        case 0xB8:            return 0xFF; // key/hole 0/1 ? WTF?!
+        //different DKs
+        /*set in game: 6E 00
+                       9A 01 00
+                       CC 01
+                       B8 00 01 */
+        case 0x6E: return 0xFF; // probably 0x00                               // Lvl0-1, 9-5 barrels
+        case 0x9A: return 0xFF; // even more guessed 0x00                      // Lvl1-4, 5-4, 7-8, 9-1 avalanche
+        case 0xCC: return 0xFF; // this one at least is never set explicitly   // Lvl1-8, 2-12, 3-8, 6-8, 7-12 pick-up barrels
         default: return 0x00;
     }
-
-    /*set in game: 6E 00
-                   9A 01 00
-                   CC 01
-                   B8 00 01 */
 }
 
 void QDKEdit::updateSprite(int num)
@@ -1691,7 +1815,6 @@ QString QDKEdit::spriteNumToString(int sprite)
 {
   switch (sprite)
   {
-
   case 0x3a: return "Donkey Kong (Klaptraps)";
   case 0x44: return "Donkey Kong (Lvl 0-2)";
   case 0x47: return "Crushing stone";
@@ -1713,7 +1836,7 @@ QString QDKEdit::spriteNumToString(int sprite)
   case 0x7a: return "Giant DK";
   case 0x7c: return "Flame";
   case 0x7f: return "Mario";
-  case 0x80: return "Wall-walking enemy";
+  case 0x80: return "Wall-walking friend";
   case 0x84: return "Floating platform";
   case 0x86: return "Walking enemy";
   case 0x88: return "Knight";
@@ -1723,7 +1846,7 @@ QString QDKEdit::spriteNumToString(int sprite)
   case 0x92: return "Donkey Kong (barrels left/right)";
   case 0x94: return "Climbable monkey";
   case 0x96: return "Falling icicle";
-  case 0x98: return "Wall-walking enemy #2";
+  case 0x98: return "Wall-walking enemy";
   case 0x9a: return "Donkey Kong (avalanche)";
   case 0x9d: return "Fruit";
   case 0xa2: return "Frog";
@@ -1741,7 +1864,7 @@ QString QDKEdit::spriteNumToString(int sprite)
   case 0xc0: return "Panser";
   case 0xc2: return "Pauline";
   case 0xc6: return "DK Junior (switch)";
-  case 0xc8: return "Backstabber";
+  case 0xc8: return "Sleeping monkey";
   case 0xca: return "DK Junior (mushrooms)";
   case 0xcc: return "Donkey Kong (pick-up barrels)";
   default: return QString("Sprite 0x%1").arg(sprite, 2, 16, QChar('0'));
@@ -1844,42 +1967,26 @@ QString QDKEdit::getLevelInfo()
 
     QString tmp;
 
+    QDKSwitch *sw;
+    QDKSwitchObject *obj;
+    for (int i = 0; i < levels[id].switches.size(); i++)
+    {
+        sw = &levels[id].switches[i];
+        str += QString("Switch %1 (state %2); pos %4x%5; connected to\n--- ").arg(i).arg(sw->state).arg(sw->x).arg(sw->y);
+        tmp = "";
+        for (int j = 0; j < sw->connectedTo.size(); j++)
+        {
+            obj = &sw->connectedTo[j];
+            if (!obj->isSprite)
+                tmp += QString("tile at %1x%2; ").arg(obj->x). arg(obj->y);
+            else
+                tmp += QString("sprite at %1x%2; ").arg(obj->x). arg(obj->y);
+        }
+        str += tmp + "\n";
+    }
+/*
     if (levels[id].switchData) // 0x11 + 0x90 bytes
     {
-        for (int i = 8; i > 0; i--)
-        {
-            if (!(levels[id].rawSwitchData[0] & (1 << (i-1))))
-                continue;
-
-            quint8 connectedObjectFlags = levels[id].rawSwitchData[i];
-            quint8 switchState = levels[id].rawSwitchData[8+i];
-            quint16 switchPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + 1]) - 0xD44D;
-
-            tmp = "--- ";
-            for (int j = 8; j > 0; j--)
-            {
-                quint8 flag = connectedObjectFlags & (1 << (j-1));
-                if (!flag)
-                    continue;
-
-                quint16 objPos;
-                if ((quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1] < 0xDA) //tile
-                {
-                    objPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1]) - 0xD44D;
-                    tmp += QString("tile at %1x%2; ").arg(objPos % 0x20). arg(objPos / 0x20);
-                }
-                else //sprite
-                {
-                    objPos = (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j)] + (0x100 * (quint8)levels[id].rawSwitchData[17 + ((i-1) * 18) + (2*j) + 1]) - 0xDA75;
-                    tmp += QString("sprite at %1x%2; ").arg(objPos % 0x20). arg(objPos / 0x20);
-                }
-            }
-
-            str += QString("Switch %1 (state %2); pos %4x%5; connected to\n").arg(i).arg(switchState).arg(switchPos % 0x20).arg(switchPos / 0x20);
-            str += tmp + "\n";
-
-        }
-
         tmp = "RAW switch data:";
         for (int i = 0; i < levels[id].rawSwitchData.size(); i++)
         {
@@ -1893,9 +2000,43 @@ QString QDKEdit::getLevelInfo()
         str += tmp + "\n";
     }
 
+    rebuildSwitchData(id);
+
+    if (levels[id].switchData) // 0x11 + 0x90 bytes
+    {
+        tmp = "RAW switch data:";
+        for (int i = 0; i < levels[id].rawSwitchData.size(); i++)
+        {
+            if (i % 16 == 0)
+                tmp += QString("\n%1: ").arg(i, 2, 16, QChar('0'));
+            tmp += QString("%1").arg((quint8)levels[id].rawSwitchData[i], 2, 16, QChar('0'));
+
+            if (i % 2 == 1)
+                tmp += " ";
+        }
+        str += tmp + "\n";
+    }*/
+
     if (levels[id].addSpriteData) // 0x40 bytes
     {
-        tmp = "Add. sprite data:";
+        tmp = "Add. sprite data (before):";
+        for (int i = 0; i < levels[id].rawAddSpriteData.size(); i++)
+        {
+            if (i % 16 == 0)
+                tmp += QString("\n%1: ").arg(i, 2, 16, QChar('0'));
+            tmp += QString("%1").arg((quint8)levels[id].rawAddSpriteData[i], 2, 16, QChar('0'));
+
+            if (i % 2 == 1)
+                tmp += " ";
+        }
+        str += tmp + "\n";
+    }
+
+    rebuildAddSpriteData(id);
+
+    if (levels[id].addSpriteData) // 0x40 bytes
+    {
+        tmp = "Add. sprite data (after):";
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i++)
         {
             if (i % 16 == 0)

@@ -46,6 +46,23 @@ struct QDKSprite : QSprite
 //    quint8 addFlag;
 };
 
+struct QDKSwitchObject
+{
+    quint8 x, y;
+    quint16 ramPos;
+    quint32 levelPos;
+    bool isSprite;
+};
+
+struct QDKSwitch
+{
+    quint8 state;
+    quint8 x, y;
+    quint32 levelPos;
+    quint16 ramPos;
+    QList<QDKSwitchObject> connectedTo;
+};
+
 typedef QColor QGBPalette[4];
 
 struct QDKLevel
@@ -68,6 +85,7 @@ struct QDKLevel
     quint16 paletteIndex;
 
     QList<QDKSprite> sprites;
+    QList<QDKSwitch> switches;
 
     QByteArray rawSwitchData; // 0x11 + 0x90 bytes
     QByteArray rawAddSpriteData; // 0x40 bytes
@@ -119,6 +137,7 @@ private:
     void updateTileset();
     quint8 getSpriteDefaultFlag(int id);
     void rebuildAddSpriteData(int id);
+    void rebuildSwitchData(int id);
 
     QDKLevel levels[MAX_LEVEL_ID];
     QImage tilesets[MAX_TILESETS];
