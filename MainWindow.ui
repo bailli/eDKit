@@ -29,7 +29,7 @@
      <rect>
       <x>9</x>
       <y>464</y>
-      <width>511</width>
+      <width>311</width>
       <height>201</height>
      </rect>
     </property>
@@ -114,6 +114,9 @@
       </property>
       <property name="contextMenuPolicy">
        <enum>Qt::CustomContextMenu</enum>
+      </property>
+      <property name="defaultDropAction">
+       <enum>Qt::MoveAction</enum>
       </property>
      </widget>
      <widget class="QToolButton" name="toolButton">
@@ -616,6 +619,166 @@
        </property>
        <property name="maximum">
         <number>511</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QGroupBox" name="grpSpriteProp">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>330</x>
+      <y>463</y>
+      <width>181</width>
+      <height>191</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>Sprite properties</string>
+    </property>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblDirection">
+       <property name="text">
+        <string>Direction</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1" colspan="2">
+      <widget class="QPushButton" name="btnFlip">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Flip/Speed</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" colspan="2">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Walking Speed</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QSpinBox" name="spbSpeed">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="maximum">
+        <number>127</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0" colspan="3">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Elevator Speed/Time</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0" colspan="3">
+      <widget class="QComboBox" name="cmbElevator">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <item>
+        <property name="text">
+         <string>Speed 1; Time 1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 2; Time 1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 3; Time 1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 4; Time 1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 1; Time 2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 2; Time 2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 3; Time 2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 4; Time 2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 1; Time 3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 2; Time 3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 3; Time 3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 4; Time 3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 1; Time 4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 2; Time 4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 3; Time 4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Speed 4; Time 4</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>RAW data</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QSpinBox" name="spbRAW">
+       <property name="maximum">
+        <number>255</number>
        </property>
       </widget>
      </item>

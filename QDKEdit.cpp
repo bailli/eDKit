@@ -47,7 +47,7 @@ QDKEdit::QDKEdit(QWidget *parent) :
     currentLevel = -1;
     dataIsChanged = false;
     tileDataIs16bit = true;
-    spriteContext = true;
+    spriteContext = false;
 
     lvlData.resize(0x280*2);
     for (int i = 0; i < 0x280*2; i+=2)
@@ -1918,6 +1918,9 @@ void QDKEdit::changeLevel(int id)
 
     lvlDataStart = 0;
     lvlDataLength = lvlData.size();
+    spriteSelection = QRect();
+    selectedSprite = -1;
+    emit spriteSelected(-1);
 
     if (levels[currentLevel].size == 0x00)
         setLevelDimension(32, 18);
@@ -2019,7 +2022,7 @@ QString QDKEdit::getLevelInfo()
 
     if (levels[id].addSpriteData) // 0x40 bytes
     {
-        tmp = "Add. sprite data (before):";
+        tmp = "Add. sprite data:";
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i++)
         {
             if (i % 16 == 0)
@@ -2032,9 +2035,9 @@ QString QDKEdit::getLevelInfo()
         str += tmp + "\n";
     }
 
-    rebuildAddSpriteData(id);
+    //rebuildAddSpriteData(id);
 
-    if (levels[id].addSpriteData) // 0x40 bytes
+    /*if (levels[id].addSpriteData) // 0x40 bytes
     {
         tmp = "Add. sprite data (after):";
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i++)
@@ -2047,7 +2050,7 @@ QString QDKEdit::getLevelInfo()
                 tmp += " ";
         }
         str += tmp + "\n";
-    }
+    }*/
 
     return str;
 }

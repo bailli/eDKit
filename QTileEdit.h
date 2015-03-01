@@ -31,6 +31,7 @@ public:
     void setTileSize(int width, int height);
     void setLevelData(QByteArray data, int start, int length);
     void setBackground(QImage backgroundImage);
+    int getSelectedSprite(int *id);
 
     void getMouse(bool enable);
 
@@ -59,6 +60,7 @@ protected:
     int tileToDraw;
     int tileCount;
     int spriteToMove;
+    int selectedSprite;
     int mousePressed;
     float scaleFactorX;
     float scaleFactorY;
@@ -68,6 +70,7 @@ protected:
     bool keepAspect;
     bool spriteMode;
     QRect mouseOverTile;
+    QRect spriteSelection;
     QSize orgSize;
     QSize scaledSize;
     QSize levelDimension;

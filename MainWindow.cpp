@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QShortcut>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -58,7 +59,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->tabWidget->setCurrentIndex(0);
     ui->spbLevel->setFocus();
 
-
     QMenu *newSpriteMenu = new QMenu(this);
     QDir dir("sprites/");
     QStringList list = dir.entryList(QStringList("*.png"), QDir::Files, QDir::Name);
@@ -75,11 +75,109 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->toolButton->setMenu(newSpriteMenu);
     connect(newSpriteMenu, SIGNAL(triggered(QAction*)), this, SLOT(addNewSprite(QAction*)));
+
+    QShortcut* shortcut = new QShortcut(QKeySequence(Qt::Key_Delete), ui->lstSprites);
+    connect(shortcut, SIGNAL(activated()), this, SLOT(removeSelectedSprite()));
+}
+
+void MainWindow::removeSelectedSprite()
+{
+    int i = ui->lstSprites->currentRow();
+    if (i != -1)
+        ui->lvlEdit->deleteSprite(i);
 }
 
 void MainWindow::selectSprite(int num)
 {
     ui->lstSprites->setCurrentRow(num);
+    ui->grpSpriteProp->setEnabled(false);
+    if (num == -1)
+        return;
+
+    int spriteID;
+    int selSprite = ui->lvlEdit->getSelectedSprite(&spriteID);
+    if (selSprite == -1)
+        return;
+
+    if ((spriteID != 0x7F) && (spriteID != 0x98) && (spriteID != 0x80) && (spriteID != 0x80)
+          && (spriteID != 0x84) && (spriteID != 0x70) && (spriteID != 0x72) && (spriteID != 0x54)
+          && (spriteID != 0xB8) && (spriteID != 0x6E) && (spriteID != 0x9A) && (spriteID != 0xCC))
+        return;
+
+    quint8 flag;
+    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
+
+    ui->grpSpriteProp->setEnabled(true);
+    ui->btnFlip->setEnabled(false);
+    ui->spbSpeed->setEnabled(false);
+    ui->cmbElevator->setEnabled(false);
+    ui->spbRAW->setEnabled(false);
+    ui->spbRAW->setValue(flag);
+
+    //sprites that may get flipped
+    if ((spriteID == 0x7F) || (spriteID == 0x98) || (spriteID == 0x80))
+    {
+        ui->btnFlip->setEnabled(true);
+        ui->btnFlip->setText("Flip");
+        ui->lblDirection->setText("Direction");
+    }
+
+    //sprites that may get flipped but should display another text ;)
+    if (spriteID == 0x84)
+    {
+        ui->btnFlip->setEnabled(true);
+        ui->lblDirection->setText("Direction");
+        if (flag & 1)
+            ui->btnFlip->setText("Left");
+        else
+            ui->btnFlip->setText("Right");
+    }
+
+    //sprites with walking speed property
+    if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
+    {
+        ui->spbSpeed->setEnabled(true);
+        ui->spbSpeed->setValue(flag >> 1);
+    }
+
+    //elevator time between boards and speed
+    //table @ 0x30F77
+    //flag byte selects pair from table
+    // 0x40 0x20 ; 0x60 0x20 ; 0x80 0x20 ; 0xA0 0x20
+    // 0x40 0x40 ; 0x60 0x40 ; 0x80 0x40 ; 0xA0 0x40
+    // 0x40 0x60 ; 0x60 0x60 ; 0x80 0x60 ; 0xA0 0x60
+    // 0x40 0x80 ; 0x60 0x80 ; 0x80 0x80 ; 0xA0 0x80
+    // 16 settings
+    // default is 0x60 0x40 => 0x05
+    //speed = (flag % 4) * 0x20 + 0x40;
+    //time = (flag / 4) * 0x20 + 0x20;
+
+    // first byte is speed; second byte time between new boards
+    if ((spriteID == 0x70) || (spriteID == 0x72))
+    {
+        ui->cmbElevator->setEnabled(true);
+        if ((flag >= 0) && (flag < 16))
+            ui->cmbElevator->setCurrentIndex(flag);
+        else
+            ui->cmbElevator->setCurrentIndex(5);
+    }
+
+    //board speed
+    if (spriteID == 0x54)
+    {
+        ui->btnFlip->setEnabled(true);
+        ui->lblDirection->setText("Speed");
+        if (!flag)
+            ui->btnFlip->setText("Normal");
+        else
+            ui->btnFlip->setText("Slow");
+    }
+
+    if ((spriteID == 0xB8) || (spriteID == 0x6E) || (spriteID == 0x9A) || (spriteID == 0xCC))
+    {
+        ui->spbRAW->setEnabled(true);
+        ui->spbRAW->setValue(flag);
+    }
 }
 
 void MainWindow::addSprite(QString text, int id)
@@ -160,8 +258,132 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::on_btnFlip_clicked()
+{
+    int spriteID;
+    int selSprite = ui->lvlEdit->getSelectedSprite(&spriteID);
+    if (selSprite == -1)
+        return;
 
-void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
+    quint8 flag;
+    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
+
+    // Mario
+    if (spriteID == 0x7F)
+    {
+        if (flag == 0x00)
+            flag = 0x01;
+        else
+            flag = 0x00;
+    }
+
+    //walking guys
+    if ((spriteID == 0x80) || (spriteID == 0x98))
+    {
+        if ((flag & 1) == 0x01)
+            flag ^= 1;
+        else
+            flag |= 1;
+
+   }
+
+    //sprites that may get flipped but should display another text ;)
+    if (spriteID == 0x84)
+    {
+        if (flag & 1)
+        {
+            ui->btnFlip->setText("Right");
+            flag ^= 1;
+        }
+        else
+        {
+            ui->btnFlip->setText("Left");
+            flag |= 1;
+        }
+    }
+
+    //board speed
+    if (spriteID == 0x54)
+    {
+        if (flag)
+        {
+            flag = 0;
+            ui->btnFlip->setText("Normal");
+        }
+        else
+        {
+            flag = 1;
+            ui->btnFlip->setText("Slow");
+        }
+    }
+
+    ui->lvlEdit->setSpriteFlag(selSprite, flag);
+    ui->spbRAW->setValue(flag);
+}
+
+void MainWindow::on_spbSpeed_valueChanged(int arg1)
+{
+    if ((arg1 < 0) || (arg1 > 127))
+        return;
+
+    int spriteID;
+    int selSprite = ui->lvlEdit->getSelectedSprite(&spriteID);
+    if (selSprite == -1)
+        return;
+
+    quint8 flag;
+    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
+
+    //sprites with walking speed property
+    if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
+    {
+        flag = (arg1 * 2) | (flag & 1);
+        ui->lvlEdit->setSpriteFlag(selSprite, flag);
+        ui->spbRAW->setValue(flag);
+    }
+}
+
+void MainWindow::on_cmbElevator_currentIndexChanged(int index)
+{
+    if ((index < 0) || (index > 15))
+        return;
+
+    int spriteID;
+    int selSprite = ui->lvlEdit->getSelectedSprite(&spriteID);
+    if (selSprite == -1)
+        return;
+
+    quint8 flag;
+    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
+
+    // elevator
+    if ((spriteID == 0x70) || (spriteID == 0x72))
+    {
+        ui->lvlEdit->setSpriteFlag(selSprite, index);
+        ui->spbRAW->setValue(index);
+    }
+}
+
+void MainWindow::on_spbRAW_valueChanged(int arg1)
+{
+    if ((arg1 < 0) || (arg1 > 255))
+        return;
+
+    int spriteID;
+    int selSprite = ui->lvlEdit->getSelectedSprite(&spriteID);
+    if (selSprite == -1)
+        return;
+
+    quint8 flag;
+    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
+
+    // DKs
+    if ((spriteID == 0xB8) || (spriteID == 0x6E) || (spriteID == 0x9A) || (spriteID == 0xCC))
+        ui->lvlEdit->setSpriteFlag(selSprite, arg1);
+}
+
+
+/*void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
 {
     quint8 flag;
     ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
@@ -222,7 +444,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
     }
 
     if ((spriteID == 0xB8) || (spriteID == 0x6E) || (spriteID == 0x9A) || (spriteID == 0xCC))
-        menu->addAction(QString("Edit flag byte (%1)").arg(flag));
+        menu->addAction(QString("Edit (unkown) flag byte (%1)").arg(flag));
 
     menu->addAction("Delete sprite");
 
@@ -272,7 +494,7 @@ void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
             }
             else if (selected->text().startsWith("Edit"))
             {
-                flag = QInputDialog::getInt(this, "Sprite property", "Key hole flag byte:", flag, 0, 255);
+                flag = QInputDialog::getInt(this, "Sprite property", "(Unkown) flag byte:", flag, 0, 255);
             }
             else
                 qWarning() << QString("Unhandled context menu selection: %1").arg(selected->text());
@@ -298,4 +520,4 @@ void MainWindow::on_lvlEdit_customContextMenuRequested(const QPoint &pos)
         return;
 
     spriteContextMenu(item, ui->lvlEdit->mapToGlobal(pos));
-}
+}*/

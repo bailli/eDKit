@@ -243,6 +243,13 @@ void QTileEdit::paintEvent(QPaintEvent *e)
     painter.setPen(Qt::gray);
     painter.drawRect(mouseOverTile.x(), mouseOverTile.y(), mouseOverTile.width(), mouseOverTile.height());
 
+    //draw sprite selection
+    if (spriteMode)
+    {
+        painter.setPen(Qt::red);
+        painter.drawRect(spriteSelection.x(), spriteSelection.y(), spriteSelection.width(), spriteSelection.height());
+    }
+
     painter.end();
 
     if (this->size() != orgSize)
@@ -361,8 +368,8 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
                 mouseOverTile = QRect();
                 if (e->buttons() != Qt::LeftButton)
                 {
-                    if (spriteToMove != -1)
-                        emit spriteSelected(-1);
+//                    if (spriteToMove != -1)
+//                        emit spriteSelected(-1);
                     spriteToMove = -1;
                     update();
                     return;
@@ -370,8 +377,8 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
             }
             else
             {
-                if (spriteToMove != spriteNo)
-                    emit spriteSelected(spriteNo);
+//                if (spriteToMove != spriteNo)
+//                    emit spriteSelected(spriteNo);
                 spriteToMove = spriteNo;
             }
 
@@ -415,31 +422,6 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         if (spriteToMove == -1)
             return;
 
-        if (e->button() == Qt::RightButton)
-        {
-            if (!spriteContext)
-            {
-                sprites.remove(spriteToMove);
-                mouseOverTile = QRect();
-                dataIsChanged = true;
-                emit spriteSelected(-1);
-                emit spriteRemoved(spriteToMove);
-                emit dataChanged();
-                spriteToMove = -1;
-                update();
-                return;
-            }
-            else
-            {
-                emit customContextMenuRequested(e->pos());
-                mouseOverTile = QRect();
-                mousePressed = false;
-                spriteToMove = -1;
-                update();
-                return;
-            }
-        }
-
         setToolTip(QString("0x%1").arg(sprites.at(spriteNo).id, 2, 16, QChar('0')));
 
         QRect newSelection(sx1, sy1, sx2-sx1-1, sy2-sy1-1);
@@ -458,6 +440,8 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         //calculate new x,y
         int newX, newY;
 
+        spriteSelection = newSelection;
+
         if (sprites.at(spriteToMove).pixelPerfect)
         {
             newX = e->x();
@@ -473,6 +457,14 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         {
             sprites[spriteToMove].x = newX;
             sprites[spriteToMove].y = newY;
+
+            if (sprites.at(spriteToMove).pixelPerfect)
+                newSelection = QRect(newX, newY, sprites.at(spriteToMove).size.width(), sprites.at(spriteToMove).size.height());
+            else
+                newSelection = QRect(newX*tileSize.width(), newY*tileSize.height(), sprites.at(spriteToMove).size.width()*tileSize.width(), sprites.at(spriteToMove).size.height()*tileSize.height());
+
+            mouseOverTile = newSelection;
+            spriteSelection = newSelection;
             dataIsChanged = true;
             emit dataChanged();
             update();
@@ -485,12 +477,66 @@ void QTileEdit::mousePressEvent(QMouseEvent *e)
     if (e->type() == QEvent::MouseButtonPress)
         mousePressed = true;
 
-    mouseMoveEvent(e);
+    if (!spriteMode)
+        mouseMoveEvent(e);
+    else
+    {
+        if ((e->button() == Qt::LeftButton) || (e->button() == Qt::RightButton))
+        {
+            if (spriteSelection != mouseOverTile)
+            {
+                spriteSelection = mouseOverTile;
+                selectedSprite = spriteToMove;
+                emit spriteSelected(selectedSprite);
+                update();
+            }
+        }
+        if (e->button() == Qt::RightButton)
+        {
+            if (!spriteContext)
+            {
+                if (spriteToMove == -1)
+                    return;
+                sprites.remove(spriteToMove);
+                mouseOverTile = QRect();
+                spriteSelection = QRect();
+                dataIsChanged = true;
+                emit spriteSelected(-1);
+                emit spriteRemoved(spriteToMove);
+                emit dataChanged();
+                spriteToMove = -1;
+                selectedSprite = -1;
+                update();
+                return;
+            }
+            else
+            {
+                emit customContextMenuRequested(e->pos());
+                mouseOverTile = QRect();
+                mousePressed = false;
+                spriteToMove = -1;
+                update();
+                return;
+            }
+        }
+    }
+
+
 }
 
 void QTileEdit::mouseReleaseEvent(QMouseEvent *)
 {
     mousePressed = false;
+}
+
+int QTileEdit::getSelectedSprite(int *id)
+{
+    if (selectedSprite != -1)
+        *id = sprites.at(selectedSprite).id;
+    else
+        *id = 0x00;
+
+    return selectedSprite;
 }
 
 void QTileEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int limitTileCount)
@@ -538,11 +584,13 @@ void QTileEdit::deleteSprite(int num)
     sprites.remove(num);
 
     mouseOverTile = QRect();
+    spriteSelection = QRect();
     dataIsChanged = true;
     emit spriteSelected(-1);
     emit spriteRemoved(num);
     emit dataChanged();
     spriteToMove = -1;
+    selectedSprite = -1;
     update();
 }
 
