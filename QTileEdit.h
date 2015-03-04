@@ -12,6 +12,7 @@ struct QSprite
     bool pixelPerfect;
     int x, y;
     QSize size;
+    QPointF drawOffset;
     QPixmap *sprite;
     int rotate;
     int id;

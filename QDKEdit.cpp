@@ -391,6 +391,10 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         sprite.rotate = BOTTOM;
         sprite.flagByte = getSpriteDefaultFlag(byte);
         sprite.size = QSize(tiles[byte].w, tiles[byte].h);
+
+        if (sprite.id == 0x54)
+            sprite.drawOffset.setX(-0.5f);
+
         levels[id].sprites.append(sprite);
 
         in >> byte;
@@ -1764,6 +1768,9 @@ void QDKEdit::addSprite(int id)
     sprite.flagByte = getSpriteDefaultFlag(id);
     sprite.size = QSize(tiles[id].w, tiles[id].h);
 
+    if (id == 0x54)
+        sprite.drawOffset.setX(-0.5f);
+
     if (tiles[id].setSpecific)
        sprite.sprite = spritePix[QString("sprite_%1_set_%2.png").arg(id, 2, 16, QChar('0')).arg(currentTileset, 2, 16, QChar('0'))];
    else
@@ -1932,7 +1939,11 @@ void QDKEdit::changeLevel(int id)
     for (int i = sprites.size()-1; i >= 0; i--)
         emit spriteRemoved(i);
 
+    for (int i = currentSwitches.size()-1; i >= 0; i--)
+        emit switchRemoved(i);
+
     sprites.clear();
+    currentSwitches.clear();
     for (int i = 0; i < levels[currentLevel].sprites.size(); i++)
     {
         sprites.append(levels[currentLevel].sprites.at(i));
@@ -1941,6 +1952,12 @@ void QDKEdit::changeLevel(int id)
         else
            sprites[i].sprite = spritePix[QString("sprite_%1.png").arg(sprites.at(i).id, 2, 16, QChar('0'))];
         emit spriteAdded(spriteNumToString(sprites[i].id), sprites[i].id);
+    }
+
+    for (int i = 0; i < levels[currentLevel].switches.size(); i++)
+    {
+        currentSwitches.append(levels[currentLevel].switches.at(i));
+        emit switchAdded(&levels[currentLevel].switches[i]);
     }
 
     update();

@@ -152,6 +152,8 @@ private:
     quint16 currentTime;
     quint16 currentPalIndex;
 
+    QList<QDKSwitch> currentSwitches;
+
     bool romLoaded;
     bool transparentSprites;
     static bool isSprite[256];
@@ -162,6 +164,8 @@ signals:
     void timeChanged(int time);
     void musicChanged(int music);
     void sizeChanged(int size);
+    void switchAdded(QDKSwitch *sw);
+    void switchRemoved(int i);
 
 private slots:
     void checkForLargeTile(int x, int y, int drawnTile);
