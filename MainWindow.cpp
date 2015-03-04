@@ -44,6 +44,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->lvlEdit, SIGNAL(spriteAdded(QString, int)), this, SLOT(addSprite(QString, int)));
     connect(ui->lvlEdit, SIGNAL(spriteRemoved(int)), this, SLOT(removeSprite(int)));
 
+    connect(ui->lvlEdit, SIGNAL(switchAdded(QDKSwitch*)), this, SLOT(addSwitch(QDKSwitch*)));
+    connect(ui->lvlEdit, SIGNAL(switchRemoved(int)), this, SLOT(removeSwitch(int)));
+
     if ((qApp->arguments().size() > 1) && (QFile::exists(qApp->arguments().at(1))))
     {
         ui->lvlEdit->loadAllLevels(qApp->arguments().at(1));
@@ -64,9 +67,34 @@ MainWindow::MainWindow(QWidget *parent) :
     QStringList list = dir.entryList(QStringList("*.png"), QDir::Files, QDir::Name);
 
     QAction *action;
+    QPixmap *pix;
+    QPixmap pixLB(32, 32);
+    qreal ar;
+
     for (int i = 0; i < list.size(); i++)
     {
-        action = new QAction(QIcon("sprites/" + list.at(i)), ui->lvlEdit->spriteNumToString(list.at(i).mid(7,2).toInt(0, 16)), newSpriteMenu);
+        pix = new QPixmap("sprites/" + list.at(i));
+        pixLB.fill();
+
+        ar = (qreal)pix->width() / (qreal)pix->height();
+
+        if (ar >= 1.0f)
+        {
+            QPainter painter;
+            painter.begin(&pixLB);
+            painter.drawPixmap(0, 16 - (16.0f/ar), pix->scaled(QSize(32, 32), Qt::KeepAspectRatio));
+            painter.end();
+        }
+        else
+        {
+            QPainter painter;
+            painter.begin(&pixLB);
+            painter.drawPixmap(16 - (16.0f*ar), 0, pix->scaled(QSize(32, 32), Qt::KeepAspectRatio));
+            painter.end();
+        }
+        delete pix;
+
+        action = new QAction(QIcon(pixLB), ui->lvlEdit->spriteNumToString(list.at(i).mid(7,2).toInt(0, 16)), newSpriteMenu);
         action->setStatusTip(list.at(i).mid(7,2));
         newSpriteMenu->addAction(action);
         if (list.at(i).contains("set", Qt::CaseInsensitive))
@@ -78,6 +106,15 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QShortcut* shortcut = new QShortcut(QKeySequence(Qt::Key_Delete), ui->lstSprites);
     connect(shortcut, SIGNAL(activated()), this, SLOT(removeSelectedSprite()));
+
+    ui->bgrObjectType->setId(ui->rbtSwitchTile, 0);
+    ui->bgrObjectType->setId(ui->rbtSwitchSprite, 1);
+    ui->bgrLeverPos->setId(ui->rbtSwitchLeft, 0);
+    ui->bgrLeverPos->setId(ui->rbtSwitchCenter, 1);
+    ui->bgrLeverPos->setId(ui->rbtSwitchRight, 2);
+
+    connect(ui->bgrObjectType, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(on_bgrLeverPos_buttonClicked(QAbstractButton*)));
+    connect(ui->bgrObjectType, SIGNAL(buttonClicked(int)), this, SLOT(on_bgrLeverPos_buttonClicked(int)));
 }
 
 void MainWindow::removeSelectedSprite()
@@ -353,9 +390,6 @@ void MainWindow::on_cmbElevator_currentIndexChanged(int index)
     if (selSprite == -1)
         return;
 
-    quint8 flag;
-    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
-
     // elevator
     if ((spriteID == 0x70) || (spriteID == 0x72))
     {
@@ -374,12 +408,77 @@ void MainWindow::on_spbRAW_valueChanged(int arg1)
     if (selSprite == -1)
         return;
 
-    quint8 flag;
-    ui->lvlEdit->getSpriteFlag(selSprite, &flag);
-
     // DKs
     if ((spriteID == 0xB8) || (spriteID == 0x6E) || (spriteID == 0x9A) || (spriteID == 0xCC))
         ui->lvlEdit->setSpriteFlag(selSprite, arg1);
+}
+
+
+void MainWindow::addSwitch(QDKSwitch *sw)
+{
+    QTreeWidgetItem *item = new QTreeWidgetItem();
+    QTreeWidgetItem *child;
+    QDKSwitchObject *obj;
+
+    item->setText(0, QString("Switch %1 (state %2) at %3x%4").arg(ui->treSwitches->topLevelItemCount()).arg(sw->state).arg(sw->x).arg(sw->y));
+
+    for (int i = 0; i < sw->connectedTo.size(); i++)
+    {
+        child = new QTreeWidgetItem();
+        obj = &sw->connectedTo[i];
+        if (!obj->isSprite)
+            child->setText(0, QString("Tile at %1x%2").arg(obj->x).arg(obj->y));
+        else
+            child->setText(0, QString("Sprite at %1x%2").arg(obj->x).arg(obj->y));
+
+        item->addChild(child);
+    }
+
+    ui->treSwitches->addTopLevelItem(item);
+    ui->treSwitches->expandAll();
+}
+
+void MainWindow::removeSwitch(int i)
+{
+    if ((i < 0) || (i > ui->treSwitches->topLevelItemCount()))
+        return;
+
+    QTreeWidgetItem *item = ui->treSwitches->takeTopLevelItem(i);
+    delete item;
+}
+
+void MainWindow::on_treSwitches_customContextMenuRequested(const QPoint &pos)
+{
+    if (!ui->treSwitches->currentItem())
+        return;
+
+    QTreeWidgetItem *item = ui->treSwitches->currentItem();
+    QMenu *menu = new QMenu();
+
+    if (!item->parent()) //top level item
+    {
+        menu->addAction("Flip switch state");
+    }
+    menu->addAction("Delete Item");
+
+    if (menu->actions().size() > 0)
+    {
+        QAction *selected = menu->exec(ui->treSwitches->mapToGlobal(pos));
+        if (!selected)
+            return;
+
+        qDebug() << selected->text();
+    }
+}
+
+void MainWindow::on_bgrLeverPos_buttonClicked(QAbstractButton * button)
+{
+    qDebug() << button->text();
+}
+
+void MainWindow::on_bgrLeverPos_buttonClicked(int id)
+{
+    qDebug() << id;
 }
 
 
