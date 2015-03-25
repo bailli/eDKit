@@ -9,9 +9,9 @@ bool QDKEdit::isSprite[] = {
     false, false, false, false, false, false, false, false,
     false, false, false, false, false, false, false, false,
     false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
+    false, false, true, false, false, false, false, false,
+    true, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, true, false,
     false, false, false, false, false, false, false, false,
     false, false, true , false, false, false, false, false,
     false, false, false, false, true , false, false, true ,
@@ -42,7 +42,7 @@ bool QDKEdit::isSprite[] = {
 
 
 QDKEdit::QDKEdit(QWidget *parent) :
-    QTileEdit(parent), romLoaded(false)
+    QTileEdit(parent), switchMode(-1), romLoaded(false)
 {
     currentLevel = -1;
     dataIsChanged = false;
@@ -667,6 +667,12 @@ void QDKEdit::rebuildAddSpriteData(int id)
                 qWarning() << QString("Level %1: More than 32 sprites with initialized flag byte! Truncated to 32!").arg(id);
                 break;
             }
+
+            //check for elevator in tilemap
+            if ((lvl->sprites.at(i).id == 0x70) || (lvl->sprites.at(i).id == 0x72))
+                if (lvl->rawTilemap[lvl->sprites.at(i).levelPos] != lvl->sprites.at(i).id)
+                    continue;
+
             //IdLo HiFb
             lvl->rawAddSpriteData[flagCount * 4] = (quint8)lvl->sprites.at(i).id;
             lvl->rawAddSpriteData[flagCount * 4 + 1] = (quint8)(lvl->sprites.at(i).ramPos % 0x100);
@@ -692,6 +698,9 @@ bool QDKEdit::recompressLevel(quint8 id)
 
     if (lvl->fullDataUpToDate)
         return true;
+
+    // drop 16bit tiles
+    updateRawTilemap(id);
 
     //rebuild sprite properties aka additional sprite data
     rebuildAddSpriteData(id);
@@ -806,9 +815,6 @@ bool QDKEdit::recompressLevel(quint8 id)
 
         }
     }
-
-    // drop 16bit tiles
-    updateRawTilemap(id);
 
     // compress tilemap
     lvl->fullData.append(LZSSCompress(&lvl->rawTilemap));
@@ -1365,6 +1371,15 @@ void QDKEdit::sortSprite(QImage *sprite, int id)
         copyTile(sprite, 0, 0, 1, 0, true);
     }
 
+    /* switches
+      A1 A2 => A1 B1
+      B1 B2 => A2 B2
+    */
+    if ((id == 0x20) || (id == 0x1A) || (id == 0x2E))
+    {
+        swapTiles(sprite, 0, 1, 1, 0);
+    }
+
     /* Giant DK Fight ???
 
     */
@@ -1822,6 +1837,9 @@ QString QDKEdit::spriteNumToString(int sprite)
 {
   switch (sprite)
   {
+  case 0x1a: return "On/off switch";
+  case 0x20: return "Enemy switch";
+  case 0x2e: return "3-pos switch";
   case 0x3a: return "Donkey Kong (Klaptraps)";
   case 0x44: return "Donkey Kong (Lvl 0-2)";
   case 0x47: return "Crushing stone";
@@ -1895,6 +1913,22 @@ void QDKEdit::saveLevel()
             levels[currentLevel].sprites[i].ramPos = levels[currentLevel].sprites[i].levelPos + 0xDA75;
         }
 
+        levels[currentLevel].switches.clear();
+        for (int i = 0; i < currentSwitches.size(); i++)
+        {
+            levels[currentLevel].switches.append(currentSwitches[i]);
+            levels[currentLevel].switches[i].levelPos = levels[currentLevel].switches[i].y * levelDimension.width() + levels[currentLevel].switches[i].x;
+            levels[currentLevel].switches[i].ramPos = levels[currentLevel].switches[i].levelPos + 0xD44D;
+            for (int j = 0; j < levels[currentLevel].switches[i].connectedTo.size(); j++)
+            {
+                levels[currentLevel].switches[i].connectedTo[j].levelPos = levels[currentLevel].switches[i].connectedTo[j].y * levelDimension.width() + levels[currentLevel].switches[i].connectedTo[j].x;
+                if (levels[currentLevel].switches[i].connectedTo[j].isSprite)
+                    levels[currentLevel].switches[i].connectedTo[j].ramPos = levels[currentLevel].switches[i].connectedTo[j].levelPos + 0xDA75;
+                else
+                    levels[currentLevel].switches[i].connectedTo[j].ramPos = levels[currentLevel].switches[i].connectedTo[j].levelPos + 0xD44D;
+            }
+        }
+
         levels[currentLevel].size = currentSize;
         levels[currentLevel].time = currentTime;
         levels[currentLevel].tileset = currentTileset;
@@ -1912,6 +1946,7 @@ void QDKEdit::changeLevel(int id)
 
     dataIsChanged = false;
     currentLevel = id;
+    switchMode = -1;
 
     lvlData.clear();
     lvlData.append(levels[currentLevel].displayTilemap);
@@ -2070,4 +2105,97 @@ QString QDKEdit::getLevelInfo()
     }*/
 
     return str;
+}
+
+void QDKEdit::highlightSwitch(int num)
+{
+    switchMode = num;
+    update();
+}
+
+void QDKEdit::deleteSwitchObj(int num)
+{
+    if ((switchMode < 0) && (switchMode < currentSwitches.size()) && (num < currentSwitches.at(switchMode).connectedTo.size()))
+        return;
+
+    currentSwitches[switchMode].connectedTo.removeAt(num);
+    dataIsChanged = true;
+    update();
+    emit switchUpdated(switchMode, &currentSwitches[switchMode]);
+}
+
+void QDKEdit::addSwitchObj(QDKSwitchObject newObj)
+{
+
+}
+
+void QDKEdit::paintEvent(QPaintEvent *e)
+{
+    QTileEdit::paintEvent(e);
+
+    QPainter *painter = getPainter();
+
+    if (!painter)
+        return;
+
+    int rawPos;
+
+    if ((switchMode > -1) && (switchMode < currentSwitches.size()))
+    {
+        rawPos = (currentSwitches.at(switchMode).y * levelDimension.width() + currentSwitches.at(switchMode).x) * 2;
+        if ((lvlData[rawPos] == 0x1A) || (lvlData[rawPos] == 0x20) || (lvlData[rawPos] == 0x2E))
+            painter->setPen(Qt::darkGreen);
+        else
+            painter->setPen(Qt::magenta);
+
+        painter->drawRect(QRect(currentSwitches.at(switchMode).x*tileSize.width(), currentSwitches.at(switchMode).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()*2-1));
+        for (int  i = 0; i < currentSwitches.at(switchMode).connectedTo.size(); i++)
+        {
+            rawPos = (currentSwitches.at(switchMode).connectedTo.at(i).y * levelDimension.width() + currentSwitches.at(switchMode).connectedTo.at(i).x) * 2;
+            //tiles
+            // 0x09 0x0A conveyer belt
+            // 0x1A 0x20 0x2E switches
+            // 0x29 shutter
+            // 0x2A floor
+            // 0x70 0x72 elevator up/down
+            // 0xB9 bird's nest
+
+            //sprites
+            // 0x54 moving board
+            painter->setPen(Qt::blue);
+            if (!currentSwitches.at(switchMode).connectedTo.at(i).isSprite)
+            {
+                if ((lvlData[rawPos] == 0x09) || (lvlData[rawPos] == 0x0A) || (lvlData[rawPos] == 0x1A)
+                 || (lvlData[rawPos] == 0x1A) || (lvlData[rawPos] == 0x20) || (lvlData[rawPos] == 0x2E)
+                 || (lvlData[rawPos] == 0x29) || (lvlData[rawPos] == 0x2A) || (lvlData[rawPos] == 0x70)
+                 || (lvlData[rawPos] == 0x72) || (lvlData[rawPos] == 0xB9))
+                {
+                    painter->setPen(Qt::green);
+                    painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), (tileSize.width()*tiles[(quint8)lvlData[rawPos]].w)-1, (tileSize.height()*tiles[(quint8)lvlData[rawPos]].h)-1));
+                }
+                else
+                {
+                    painter->setPen(Qt::blue);
+                    painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
+                }
+
+            }
+            else
+            {
+                painter->setPen(Qt::blue);
+                int j;
+                for (j = 0; j < sprites.size(); j++)
+                    if ((sprites.at(j).id == 0x54) && (sprites.at(j).x == currentSwitches.at(switchMode).connectedTo.at(i).x) && (sprites.at(j).y == currentSwitches.at(switchMode).connectedTo.at(i).y))
+                    {
+                        painter->setPen(Qt::green);
+                        painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width()-tileSize.width()/2, currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()-1));
+                        break;
+                    }
+                if (j >= sprites.size())
+                    painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
+            }
+        }
+    }
+
+    finishPainter(painter);
 }

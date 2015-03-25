@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QListWidgetItem>
+#include <QTreeWidgetItem>
 #include <QAbstractButton>
 
 #define BASE_ROM "base.gb"
@@ -23,6 +24,7 @@ public:
 
 private:
 //    void spriteContextMenu(QListWidgetItem *item, QPoint globalPos);
+    void addSwitchAtPos(int i, QDKSwitch *sw);
     
 private slots:
     void updateText();
@@ -36,7 +38,9 @@ private slots:
     void removeSprite(int index);
     void addNewSprite(QAction *action);
     void addSwitch(QDKSwitch *sw);
+    void updateSwitch(int i, QDKSwitch *sw);
     void removeSwitch(int i);
+    void tabsSwitched(int index);
 
     void on_btnFlip_clicked();
     void on_spbSpeed_valueChanged(int arg1);
@@ -48,6 +52,9 @@ private slots:
 //    void on_lstSprites_customContextMenuRequested(const QPoint &pos);
 //    void on_lstSprites_itemDoubleClicked(QListWidgetItem *item);
 //    void on_lvlEdit_customContextMenuRequested(const QPoint &pos);
+
+    void on_treSwitches_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *);
+    void on_btnDelItem_clicked();
 
 private:
     Ui::MainWindow *ui;

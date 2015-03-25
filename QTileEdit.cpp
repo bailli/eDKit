@@ -157,29 +157,23 @@ void QTileEdit::setBackground(QImage backgroundImage)
 
 void QTileEdit::paintEvent(QPaintEvent *e)
 {
-    QPainter painter;
+    QPainter *painter = getPainter();
 
-    bool ok;
-    if (this->size() == orgSize)
-        ok = painter.begin(this);
-    else
-        ok = painter.begin(&originalSize);
-
-    if (!ok)
+    if (!painter)
         return;
 
     //draw background
     //QPainter painter(this);
-    painter.drawImage(QRect(0, 0, orgSize.width(), orgSize.height()), background);
+    painter->drawImage(QRect(0, 0, orgSize.width(), orgSize.height()), background);
 
     //draw tiles
-    painter.setBackgroundMode(Qt::TransparentMode);
+    painter->setBackgroundMode(Qt::TransparentMode);
     int tileNumber;
     for (int i = 0; i < levelDimension.height(); i++)
         for (int j = 0; j < levelDimension.width(); j++)
         {
             tileNumber = getTile(j, i);
-            painter.drawPixmap(QRect(j*tileSize.width(), i*tileSize.height(), tileSize.width(), tileSize.height()), tileSet, tileNumberToQRect(tileNumber));
+            painter->drawPixmap(QRect(j*tileSize.width(), i*tileSize.height(), tileSize.width(), tileSize.height()), tileSet, tileNumberToQRect(tileNumber));
         }
 
     if (spriteMode)
@@ -203,66 +197,89 @@ void QTileEdit::paintEvent(QPaintEvent *e)
             switch (sprites.at(i).rotate)
             {
                 case LEFT:
-                    painter.save();
-                    painter.translate(sprites.at(i).sprite->height(), 0);
-                    painter.rotate(90);
-                    painter.drawPixmap(y, -1*x, *sprites.at(i).sprite);
-                    painter.restore();
+                    painter->save();
+                    painter->translate(sprites.at(i).sprite->height(), 0);
+                    painter->rotate(90);
+                    painter->drawPixmap(y, -1*x, *sprites.at(i).sprite);
+                    painter->restore();
                     break;
                 case RIGHT:
-                    painter.save();
-                    painter.translate(0, sprites.at(i).sprite->width());
-                    painter.rotate(-90);
-                    painter.drawPixmap(-1*y, x, *sprites.at(i).sprite);
-                    painter.restore();
+                    painter->save();
+                    painter->translate(0, sprites.at(i).sprite->width());
+                    painter->rotate(-90);
+                    painter->drawPixmap(-1*y, x, *sprites.at(i).sprite);
+                    painter->restore();
                     break;
                 case TOP:
-                    painter.save();
-                    painter.translate(sprites.at(i).sprite->width(), sprites.at(i).sprite->height());
-                    painter.rotate(180);
-                    painter.drawPixmap(-1*x, -1*y, *sprites.at(i).sprite);
-                    painter.restore();
+                    painter->save();
+                    painter->translate(sprites.at(i).sprite->width(), sprites.at(i).sprite->height());
+                    painter->rotate(180);
+                    painter->drawPixmap(-1*x, -1*y, *sprites.at(i).sprite);
+                    painter->restore();
                     break;
                 case FLIPPED:
-                    painter.save();
-                    painter.translate(sprites.at(i).sprite->width(), 0);
-                    painter.scale(-1, 1);
-                    painter.drawPixmap(-1*x, y, *sprites.at(i).sprite);
-                    painter.restore();
+                    painter->save();
+                    painter->translate(sprites.at(i).sprite->width(), 0);
+                    painter->scale(-1, 1);
+                    painter->drawPixmap(-1*x, y, *sprites.at(i).sprite);
+                    painter->restore();
                     break;
                  case BOTTOM:
-                 default: painter.drawPixmap(x, y, *sprites.at(i).sprite); break;
+                 default: painter->drawPixmap(x, y, *sprites.at(i).sprite); break;
             }
         }
     }
 
     //draw selection
-    painter.setPen(Qt::gray);
-    painter.drawRect(mouseOverTile.x(), mouseOverTile.y(), mouseOverTile.width(), mouseOverTile.height());
+    painter->setPen(Qt::gray);
+    painter->drawRect(mouseOverTile.x(), mouseOverTile.y(), mouseOverTile.width(), mouseOverTile.height());
 
     //draw sprite selection
     if (spriteMode)
     {
-        painter.setPen(Qt::red);
-        painter.drawRect(spriteSelection.x(), spriteSelection.y(), spriteSelection.width(), spriteSelection.height());
+        painter->setPen(Qt::red);
+        painter->drawRect(spriteSelection.x(), spriteSelection.y(), spriteSelection.width(), spriteSelection.height());
     }
 
-    painter.end();
+    finishPainter(painter);
+}
+
+QPainter *QTileEdit::getPainter()
+{
+    QPainter *painter = new QPainter();
+
+    bool ok;
+    if (this->size() == orgSize)
+        ok = painter->begin(this);
+    else
+        ok = painter->begin(&originalSize);
+
+    if (!ok)
+        return NULL;
+    else
+        return painter;
+}
+
+void QTileEdit::finishPainter(QPainter *painter)
+{
+    if (!painter)
+        return;
+
+    painter->end();
 
     if (this->size() != orgSize)
     {
-       QPainter widgetPainter(this);
+        QPainter widgetPainter(this);
         QRect target;
         if (!keepAspect)
             target = this->rect();
         else
-        {
-            //scaledSize = orgSize;
-            //scaledSize.scale(this->size(), Qt::KeepAspectRatio);
             target = QRect(0, 0, scaledSize.width(), scaledSize.height());
-        }
+
         widgetPainter.drawImage(target, originalSize);
     }
+
+    delete painter;
 }
 
 void QTileEdit::resizeEvent(QResizeEvent *e)
@@ -311,133 +328,47 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
     else
     {
         //check if mouse is over a sprite
-        int spriteNo;
-        int mx = (float)e->x() / scaleFactorX;
-        int my = (float)e->y() / scaleFactorY;
-        int sx1, sx2, sy1, sy2;
+        QRect spriteRect;
 
         if (!mousePressed)
         {
-            for (spriteNo = 0; spriteNo < sprites.size(); spriteNo++)
-            {
-                if (sprites.at(spriteNo).pixelPerfect)
-                {
-                    sx1 = sprites.at(spriteNo).x;
-                    sy1 = sprites.at(spriteNo).y;
-                    if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
-                    {
-                        sx2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.width();
-                        sy2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.width();
-                    }
-                    else
-                    {
-                        sx2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.height();
-                        sy2 = sprites.at(spriteNo).x + sprites.at(spriteNo).size.height();
-                    }
+            spriteToMove = getSpriteAtXY((float)e->x() / scaleFactorX, (float)e->y() / scaleFactorY, &spriteRect);
 
-                }
-                else
-                {
-                    sx1 = sprites.at(spriteNo).x * tileSize.width()  + (sprites.at(spriteNo).drawOffset.x()*(qreal)tileSize.width());
-                    sy1 = sprites.at(spriteNo).y * tileSize.height() + (sprites.at(spriteNo).drawOffset.y()*(qreal)tileSize.height());
-
-                    if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
-                    {
-                        sx2 = (sprites.at(spriteNo).x + sprites.at(spriteNo).size.height()) * tileSize.width()  + (sprites.at(spriteNo).drawOffset.x()*(qreal)tileSize.width());
-                        sy2 = (sprites.at(spriteNo).y + sprites.at(spriteNo).size.width()) * tileSize.height()  + (sprites.at(spriteNo).drawOffset.y()*(qreal)tileSize.height());
-                    }
-                    else
-                    {
-                        sx2 = (sprites.at(spriteNo).x + sprites.at(spriteNo).size.width()) * tileSize.width() + (sprites.at(spriteNo).drawOffset.x()*(qreal)tileSize.width());
-                        sy2 = (sprites.at(spriteNo).y + sprites.at(spriteNo).size.height()) * tileSize.height() + (sprites.at(spriteNo).drawOffset.y()*(qreal)tileSize.height());
-                    }
-
-
-                }
-
-
-                if ((mx >= sx1) && (mx < sx2) && (my >= sy1) && (my < sy2))
-                    break;
-            }
-
-            if (spriteNo == sprites.size())
+            if (spriteToMove == -1)
             {
                 mouseOverTile = QRect();
                 if (e->buttons() != Qt::LeftButton)
                 {
-//                    if (spriteToMove != -1)
-//                        emit spriteSelected(-1);
-                    spriteToMove = -1;
                     update();
                     return;
                 }
             }
-            else
-            {
-//                if (spriteToMove != spriteNo)
-//                    emit spriteSelected(spriteNo);
-                spriteToMove = spriteNo;
-            }
-
         }
         else
-        {
-            if (sprites.at(spriteToMove).pixelPerfect)
-            {
-                sx1 = sprites.at(spriteToMove).x;
-                sy1 = sprites.at(spriteToMove).y;
-                if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
-                {
-                    sx2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.height();
-                    sy2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.width();
-                }
-                else
-                {
-                    sx2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.width();
-                    sy2 = sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.height();
-                }
-            }
-            else
-            {
-                sx1 = sprites.at(spriteToMove).x * tileSize.width()  + (sprites.at(spriteToMove).drawOffset.x()*(qreal)tileSize.width());
-                sy1 = sprites.at(spriteToMove).y * tileSize.height()  + (sprites.at(spriteToMove).drawOffset.y()*(qreal)tileSize.height());
-                if ((sprites.at(spriteNo).rotate == LEFT) || (sprites.at(spriteNo).rotate == RIGHT))
-                {
-                    sx2 = (sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.height()) * tileSize.width() + (sprites.at(spriteToMove).drawOffset.x()*(qreal)tileSize.width());
-                    sy2 = (sprites.at(spriteToMove).y + sprites.at(spriteToMove).size.width()) * tileSize.height() + (sprites.at(spriteToMove).drawOffset.y()*(qreal)tileSize.height());
-                }
-                else
-                {
-                    sx2 = (sprites.at(spriteToMove).x + sprites.at(spriteToMove).size.width()) * tileSize.width() + (sprites.at(spriteToMove).drawOffset.x()*(qreal)tileSize.width());
-                    sy2 = (sprites.at(spriteToMove).y + sprites.at(spriteToMove).size.height()) * tileSize.height() + (sprites.at(spriteToMove).drawOffset.y()*(qreal)tileSize.height());
-                }
-
-            }
-
-        }
+            spriteRect = getSpriteRect(spriteToMove);
 
         if (spriteToMove == -1)
             return;
 
-        setToolTip(QString("0x%1").arg(sprites.at(spriteNo).id, 2, 16, QChar('0')));
+        setToolTip(QString("0x%1").arg(sprites.at(spriteToMove).id, 2, 16, QChar('0')));
 
-        QRect newSelection(sx1, sy1, sx2-sx1-1, sy2-sy1-1);
-
-        if (mouseOverTile != newSelection)
+        // sprite changed - update all selections
+        if (mouseOverTile != spriteRect)
         {
-            mouseOverTile = newSelection;
+            mouseOverTile = spriteRect;
             update();
         }
-
-//        return;
 
         if (e->buttons() != Qt::LeftButton)
             return;
 
-        //calculate new x,y
-        int newX, newY;
+        // mouse button is pressed
+        // update sprite selection
+        spriteSelection = spriteRect;
 
-        spriteSelection = newSelection;
+        // sprite gets moved
+        // calculate new x,y
+        int newX, newY;
 
         if (sprites.at(spriteToMove).pixelPerfect)
         {
@@ -456,12 +387,12 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
             sprites[spriteToMove].y = newY;
 
             if (sprites.at(spriteToMove).pixelPerfect)
-                newSelection = QRect(newX, newY, sprites.at(spriteToMove).size.width(), sprites.at(spriteToMove).size.height());
+                spriteRect = QRect(newX, newY, sprites.at(spriteToMove).size.width(), sprites.at(spriteToMove).size.height());
             else
-                newSelection = QRect(newX*tileSize.width(), newY*tileSize.height(), sprites.at(spriteToMove).size.width()*tileSize.width(), sprites.at(spriteToMove).size.height()*tileSize.height());
+                spriteRect = QRect(newX*tileSize.width(), newY*tileSize.height(), sprites.at(spriteToMove).size.width()*tileSize.width(), sprites.at(spriteToMove).size.height()*tileSize.height());
 
-            mouseOverTile = newSelection;
-            spriteSelection = newSelection;
+            mouseOverTile = spriteRect;
+            spriteSelection = spriteRect;
             dataIsChanged = true;
 
             emit dataChanged();
@@ -518,8 +449,63 @@ void QTileEdit::mousePressEvent(QMouseEvent *e)
             }
         }
     }
+}
+
+int QTileEdit::getSpriteAtXY(int x, int y, QRect *spriteRect = NULL)
+{
+    int i;
+    int sx1, sx2, sy1, sy2;
+
+    for (i = 0; i < sprites.size(); i++)
+    {
+        if (sprites.at(i).pixelPerfect)
+        {
+            sx1 = sprites.at(i).x;
+            sy1 = sprites.at(i).y;
+            if ((sprites.at(i).rotate == LEFT) || (sprites.at(i).rotate == RIGHT))
+            {
+                sx2 = sprites.at(i).x + sprites.at(i).size.width();
+                sy2 = sprites.at(i).x + sprites.at(i).size.width();
+            }
+            else
+            {
+                sx2 = sprites.at(i).x + sprites.at(i).size.height();
+                sy2 = sprites.at(i).x + sprites.at(i).size.height();
+            }
+
+        }
+        else
+        {
+            sx1 = sprites.at(i).x * tileSize.width()  + (sprites.at(i).drawOffset.x()*(qreal)tileSize.width());
+            sy1 = sprites.at(i).y * tileSize.height() + (sprites.at(i).drawOffset.y()*(qreal)tileSize.height());
+
+            if ((sprites.at(i).rotate == LEFT) || (sprites.at(i).rotate == RIGHT))
+            {
+                sx2 = (sprites.at(i).x + sprites.at(i).size.height()) * tileSize.width()  + (sprites.at(i).drawOffset.x()*(qreal)tileSize.width());
+                sy2 = (sprites.at(i).y + sprites.at(i).size.width()) * tileSize.height()  + (sprites.at(i).drawOffset.y()*(qreal)tileSize.height());
+            }
+            else
+            {
+                sx2 = (sprites.at(i).x + sprites.at(i).size.width()) * tileSize.width() + (sprites.at(i).drawOffset.x()*(qreal)tileSize.width());
+                sy2 = (sprites.at(i).y + sprites.at(i).size.height()) * tileSize.height() + (sprites.at(i).drawOffset.y()*(qreal)tileSize.height());
+            }
 
 
+        }
+
+
+        if ((x >= sx1) && (x < sx2) && (y >= sy1) && (y < sy2))
+            break;
+    }
+
+    if (i == sprites.size())
+        return -1;
+    else
+    {
+        if (spriteRect)
+            *spriteRect = QRect(sx1, sy1, sx2-sx1-1, sy2-sy1-1);
+        return i;
+    }
 }
 
 void QTileEdit::mouseReleaseEvent(QMouseEvent *)
@@ -535,6 +521,49 @@ int QTileEdit::getSelectedSprite(int *id)
         *id = 0x00;
 
     return selectedSprite;
+}
+
+
+QRect QTileEdit::getSpriteRect(int num)
+{
+    int sx1, sx2, sy1, sy2;
+
+    if (num >= sprites.size())
+        return QRect();
+
+    if (sprites.at(num).pixelPerfect)
+    {
+        sx1 = sprites.at(num).x;
+        sy1 = sprites.at(num).y;
+        if ((sprites.at(num).rotate == LEFT) || (sprites.at(num).rotate == RIGHT))
+        {
+            sx2 = sprites.at(num).x + sprites.at(num).size.height();
+            sy2 = sprites.at(num).x + sprites.at(num).size.width();
+        }
+        else
+        {
+            sx2 = sprites.at(num).x + sprites.at(num).size.width();
+            sy2 = sprites.at(num).x + sprites.at(num).size.height();
+        }
+    }
+    else
+    {
+        sx1 = sprites.at(num).x * tileSize.width()  + (sprites.at(num).drawOffset.x()*(qreal)tileSize.width());
+        sy1 = sprites.at(num).y * tileSize.height()  + (sprites.at(num).drawOffset.y()*(qreal)tileSize.height());
+        if ((sprites.at(num).rotate == LEFT) || (sprites.at(num).rotate == RIGHT))
+        {
+            sx2 = (sprites.at(num).x + sprites.at(num).size.height()) * tileSize.width() + (sprites.at(num).drawOffset.x()*(qreal)tileSize.width());
+            sy2 = (sprites.at(num).y + sprites.at(num).size.width()) * tileSize.height() + (sprites.at(num).drawOffset.y()*(qreal)tileSize.height());
+        }
+        else
+        {
+            sx2 = (sprites.at(num).x + sprites.at(num).size.width()) * tileSize.width() + (sprites.at(num).drawOffset.x()*(qreal)tileSize.width());
+            sy2 = (sprites.at(num).y + sprites.at(num).size.height()) * tileSize.height() + (sprites.at(num).drawOffset.y()*(qreal)tileSize.height());
+        }
+
+    }
+
+    return QRect(sx1, sy1, sx2-sx1-1, sy2-sy1-1);
 }
 
 void QTileEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int limitTileCount)

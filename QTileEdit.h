@@ -44,10 +44,14 @@ protected:
     void mousePressEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *);
     void resizeEvent(QResizeEvent *e);
+    QPainter *getPainter();
+    void finishPainter(QPainter *painter);
 
     void resized(QSize newSize);
     void drawTile(int tileNumber, int x, int y);
     QRect tileNumberToQRect(int tileNumber);
+    int getSpriteAtXY(int x, int y, QRect *spriteRect);
+    QRect getSpriteRect(int num);
     int getTile(int x, int y);
     int getTile(int offset);
     void setTile(int x, int y, int tileNumber);

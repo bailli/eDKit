@@ -117,6 +117,7 @@ public:
     QString spriteNumToString(int sprite);
 
 private:
+    void paintEvent(QPaintEvent *e);
     QByteArray LZSSDecompress(QDataStream *in, quint16 decompressedSize);
     QByteArray LZSSCompress(QByteArray *src);
     bool readLevel(QFile *src, quint8 id);
@@ -151,6 +152,7 @@ private:
     quint8 currentTileset;
     quint16 currentTime;
     quint16 currentPalIndex;
+    int switchMode;
 
     QList<QDKSwitch> currentSwitches;
 
@@ -166,6 +168,7 @@ signals:
     void sizeChanged(int size);
     void switchAdded(QDKSwitch *sw);
     void switchRemoved(int i);
+    void switchUpdated(int i, QDKSwitch *sw);
 
 private slots:
     void checkForLargeTile(int x, int y, int drawnTile);
@@ -181,6 +184,10 @@ public slots:
     void changeSize(int size);
     void changeSpriteTransparency(bool transparent);
     void addSprite(int id);
+
+    void highlightSwitch(int num);
+    void deleteSwitchObj(int num);
+    void addSwitchObj(QDKSwitchObject newObj);
 };
 
 #endif // QDKEDIT_H

@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(updateText()));
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), ui->lvlEdit, SLOT(toggleSpriteMode(int)));
+    connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(tabsSwitched(int)));
     connect(ui->btnWrite, SIGNAL(clicked()), ui->lvlEdit, SLOT(saveLevel()));
     connect(ui->actionOpen_ROM, SIGNAL(triggered()), this, SLOT(loadROM()));
     connect(ui->actionSave_ROM, SIGNAL(triggered()), this, SLOT(SaveROM()));
@@ -45,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->lvlEdit, SIGNAL(spriteRemoved(int)), this, SLOT(removeSprite(int)));
 
     connect(ui->lvlEdit, SIGNAL(switchAdded(QDKSwitch*)), this, SLOT(addSwitch(QDKSwitch*)));
+    connect(ui->lvlEdit, SIGNAL(switchUpdated(int,QDKSwitch*)), this, SLOT(updateSwitch(int,QDKSwitch*)));
     connect(ui->lvlEdit, SIGNAL(switchRemoved(int)), this, SLOT(removeSwitch(int)));
 
     if ((qApp->arguments().size() > 1) && (QFile::exists(qApp->arguments().at(1))))
@@ -115,6 +117,16 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->bgrObjectType, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(on_bgrLeverPos_buttonClicked(QAbstractButton*)));
     connect(ui->bgrObjectType, SIGNAL(buttonClicked(int)), this, SLOT(on_bgrLeverPos_buttonClicked(int)));
+
+    changeLevel(12);
+}
+
+void MainWindow::tabsSwitched(int index)
+{
+    if (index < 2)
+        ui->lvlEdit->highlightSwitch(-1);
+    else
+        on_treSwitches_currentItemChanged(ui->treSwitches->currentItem(), NULL);
 }
 
 void MainWindow::removeSelectedSprite()
@@ -413,8 +425,12 @@ void MainWindow::on_spbRAW_valueChanged(int arg1)
         ui->lvlEdit->setSpriteFlag(selSprite, arg1);
 }
 
-
 void MainWindow::addSwitch(QDKSwitch *sw)
+{
+    addSwitchAtPos(ui->treSwitches->topLevelItemCount(), sw);
+}
+
+void MainWindow::addSwitchAtPos(int i, QDKSwitch *sw)
 {
     QTreeWidgetItem *item = new QTreeWidgetItem();
     QTreeWidgetItem *child;
@@ -434,8 +450,17 @@ void MainWindow::addSwitch(QDKSwitch *sw)
         item->addChild(child);
     }
 
-    ui->treSwitches->addTopLevelItem(item);
+    ui->treSwitches->insertTopLevelItem(i, item);
     ui->treSwitches->expandAll();
+}
+
+void MainWindow::updateSwitch(int i, QDKSwitch *sw)
+{
+    QTreeWidgetItem *item = ui->treSwitches->takeTopLevelItem(i);
+    if (!item)
+        return;
+
+    addSwitchAtPos(i, sw);
 }
 
 void MainWindow::removeSwitch(int i)
@@ -445,6 +470,24 @@ void MainWindow::removeSwitch(int i)
 
     QTreeWidgetItem *item = ui->treSwitches->takeTopLevelItem(i);
     delete item;
+}
+
+void MainWindow::on_treSwitches_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *)
+{
+    if (!current)
+        return;
+
+    QTreeWidgetItem *parent;
+    parent = current->parent();
+    if (!parent)
+        parent = current;
+
+    bool ok;
+    int i = parent->text(0).mid(7, 1).toInt(&ok);
+    if (!ok)
+        i = -1;
+
+    ui->lvlEdit->highlightSwitch(i);
 }
 
 void MainWindow::on_treSwitches_customContextMenuRequested(const QPoint &pos)
@@ -481,6 +524,15 @@ void MainWindow::on_bgrLeverPos_buttonClicked(int id)
     qDebug() << id;
 }
 
+void MainWindow::on_btnDelItem_clicked()
+{
+    QTreeWidgetItem *item = ui->treSwitches->currentItem();
+    if (!item)
+        return;
+    if (!item->parent())
+        return;
+    ui->lvlEdit->deleteSwitchObj(item->parent()->indexOfChild(item));
+}
 
 /*void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
 {
