@@ -40,6 +40,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *e);
+    virtual void paintLevel(QPainter *painter);
     void mouseMoveEvent(QMouseEvent *e);
     void mousePressEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *);

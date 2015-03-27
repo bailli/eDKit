@@ -162,6 +162,13 @@ void QTileEdit::paintEvent(QPaintEvent *e)
     if (!painter)
         return;
 
+    paintLevel(painter);
+
+    finishPainter(painter);
+}
+
+void QTileEdit::paintLevel(QPainter *painter)
+{
     //draw background
     //QPainter painter(this);
     painter->drawImage(QRect(0, 0, orgSize.width(), orgSize.height()), background);
@@ -240,8 +247,6 @@ void QTileEdit::paintEvent(QPaintEvent *e)
         painter->setPen(Qt::red);
         painter->drawRect(spriteSelection.x(), spriteSelection.y(), spriteSelection.width(), spriteSelection.height());
     }
-
-    finishPainter(painter);
 }
 
 QPainter *QTileEdit::getPainter()
@@ -472,7 +477,6 @@ int QTileEdit::getSpriteAtXY(int x, int y, QRect *spriteRect = NULL)
                 sx2 = sprites.at(i).x + sprites.at(i).size.height();
                 sy2 = sprites.at(i).x + sprites.at(i).size.height();
             }
-
         }
         else
         {
@@ -489,10 +493,7 @@ int QTileEdit::getSpriteAtXY(int x, int y, QRect *spriteRect = NULL)
                 sx2 = (sprites.at(i).x + sprites.at(i).size.width()) * tileSize.width() + (sprites.at(i).drawOffset.x()*(qreal)tileSize.width());
                 sy2 = (sprites.at(i).y + sprites.at(i).size.height()) * tileSize.height() + (sprites.at(i).drawOffset.y()*(qreal)tileSize.height());
             }
-
-
         }
-
 
         if ((x >= sx1) && (x < sx2) && (y >= sy1) && (y < sy2))
             break;

@@ -46,15 +46,8 @@ private slots:
     void on_spbSpeed_valueChanged(int arg1);
     void on_cmbElevator_currentIndexChanged(int index);
     void on_spbRAW_valueChanged(int arg1);
-    void on_treSwitches_customContextMenuRequested(const QPoint &pos);
-    void on_bgrLeverPos_buttonClicked(QAbstractButton * button);
-    void on_bgrLeverPos_buttonClicked(int id);
-//    void on_lstSprites_customContextMenuRequested(const QPoint &pos);
-//    void on_lstSprites_itemDoubleClicked(QListWidgetItem *item);
-//    void on_lvlEdit_customContextMenuRequested(const QPoint &pos);
-
     void on_treSwitches_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *);
-    void on_btnDelItem_clicked();
+    void delSwitchItem();
 
 private:
     Ui::MainWindow *ui;

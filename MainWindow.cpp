@@ -106,26 +106,18 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->toolButton->setMenu(newSpriteMenu);
     connect(newSpriteMenu, SIGNAL(triggered(QAction*)), this, SLOT(addNewSprite(QAction*)));
 
-    QShortcut* shortcut = new QShortcut(QKeySequence(Qt::Key_Delete), ui->lstSprites);
-    connect(shortcut, SIGNAL(activated()), this, SLOT(removeSelectedSprite()));
+    QShortcut* scSprites = new QShortcut(QKeySequence(Qt::Key_Delete), ui->lstSprites);
+    connect(scSprites, SIGNAL(activated()), this, SLOT(removeSelectedSprite()));
 
-    ui->bgrObjectType->setId(ui->rbtSwitchTile, 0);
-    ui->bgrObjectType->setId(ui->rbtSwitchSprite, 1);
-    ui->bgrLeverPos->setId(ui->rbtSwitchLeft, 0);
-    ui->bgrLeverPos->setId(ui->rbtSwitchCenter, 1);
-    ui->bgrLeverPos->setId(ui->rbtSwitchRight, 2);
-
-    connect(ui->bgrObjectType, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(on_bgrLeverPos_buttonClicked(QAbstractButton*)));
-    connect(ui->bgrObjectType, SIGNAL(buttonClicked(int)), this, SLOT(on_bgrLeverPos_buttonClicked(int)));
-
-    changeLevel(12);
+    QShortcut* scSwitches = new QShortcut(QKeySequence(Qt::Key_Delete), ui->treSwitches);
+    connect(scSwitches, SIGNAL(activated()), this, SLOT(delSwitchItem()));
 }
 
 void MainWindow::tabsSwitched(int index)
 {
-    if (index < 2)
-        ui->lvlEdit->highlightSwitch(-1);
-    else
+    ui->lvlEdit->toggleSwitchMode((bool)(index > 1));
+
+    if (index > 1)
         on_treSwitches_currentItemChanged(ui->treSwitches->currentItem(), NULL);
 }
 
@@ -436,7 +428,15 @@ void MainWindow::addSwitchAtPos(int i, QDKSwitch *sw)
     QTreeWidgetItem *child;
     QDKSwitchObject *obj;
 
-    item->setText(0, QString("Switch %1 (state %2) at %3x%4").arg(ui->treSwitches->topLevelItemCount()).arg(sw->state).arg(sw->x).arg(sw->y));
+    QString state;
+    switch (sw->state)
+    {
+        case 1: state = "middle"; break;
+        case 2: state = "right"; break;
+        default: state = "left";
+    }
+
+    item->setText(0, QString("Switch %1 (%2) at %3x%4").arg(ui->treSwitches->topLevelItemCount()).arg(state).arg(sw->x).arg(sw->y));
 
     for (int i = 0; i < sw->connectedTo.size(); i++)
     {
@@ -487,188 +487,17 @@ void MainWindow::on_treSwitches_currentItemChanged(QTreeWidgetItem *current, QTr
     if (!ok)
         i = -1;
 
-    ui->lvlEdit->highlightSwitch(i);
+    ui->lvlEdit->selectSwitch(i);
 }
 
-void MainWindow::on_treSwitches_customContextMenuRequested(const QPoint &pos)
-{
-    if (!ui->treSwitches->currentItem())
-        return;
 
-    QTreeWidgetItem *item = ui->treSwitches->currentItem();
-    QMenu *menu = new QMenu();
-
-    if (!item->parent()) //top level item
-    {
-        menu->addAction("Flip switch state");
-    }
-    menu->addAction("Delete Item");
-
-    if (menu->actions().size() > 0)
-    {
-        QAction *selected = menu->exec(ui->treSwitches->mapToGlobal(pos));
-        if (!selected)
-            return;
-
-        qDebug() << selected->text();
-    }
-}
-
-void MainWindow::on_bgrLeverPos_buttonClicked(QAbstractButton * button)
-{
-    qDebug() << button->text();
-}
-
-void MainWindow::on_bgrLeverPos_buttonClicked(int id)
-{
-    qDebug() << id;
-}
-
-void MainWindow::on_btnDelItem_clicked()
+void MainWindow::delSwitchItem()
 {
     QTreeWidgetItem *item = ui->treSwitches->currentItem();
     if (!item)
         return;
     if (!item->parent())
-        return;
-    ui->lvlEdit->deleteSwitchObj(item->parent()->indexOfChild(item));
+        ui->lvlEdit->deleteCurrentSwitch();
+    else
+        ui->lvlEdit->deleteSwitchObj(item->parent()->indexOfChild(item));
 }
-
-/*void MainWindow::on_lstSprites_itemDoubleClicked(QListWidgetItem *item)
-{
-    quint8 flag;
-    ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
-    qDebug() << flag;
-}
-
-void MainWindow::spriteContextMenu(QListWidgetItem *item, QPoint globalPos)
-{
-    quint8 flag;
-    quint8 spriteID = item->statusTip().toInt(0, 16);
-    ui->lvlEdit->getSpriteFlag(ui->lstSprites->row(item), &flag);
-
-    QMenu *menu = new QMenu();
-
-    //sprites that may get flipped
-    if ((spriteID == 0x7F) || (spriteID == 0x98) || (spriteID == 0x80))
-        menu->addAction("Flip sprite");
-
-    //sprites that may get flipped but should display another text ;)
-    if (spriteID == 0x84)
-    {
-        if (flag & 1)
-            menu->addAction("Flip direction (left)");
-        else
-            menu->addAction("Flip direction (right)");
-    }
-
-    //sprites with walking speed property
-    if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
-        menu->addAction(QString("Change speed (%1)").arg(flag >> 1));
-
-    //elevator time between boards and speed
-    //table @ 0x30F77
-    //flag byte selects pair from table
-    // 0x40 0x20 ; 0x60 0x20 ; 0x80 0x20 ; 0xA0 0x20
-    // 0x40 0x40 ; 0x60 0x40 ; 0x80 0x40 ; 0xA0 0x40
-    // 0x40 0x60 ; 0x60 0x60 ; 0x80 0x60 ; 0xA0 0x60
-    // 0x40 0x80 ; 0x60 0x80 ; 0x80 0x80 ; 0xA0 0x80
-    // 16 settings
-    // default is 0x60 0x40 => 0x05
-
-    // first byte is speed; second byte time between new boards
-    if ((spriteID == 0x70) || (spriteID == 0x72))
-    {
-        quint8 time, speed;
-        speed = (flag % 4) * 0x20 + 0x40;
-        time = (flag / 4) * 0x20 + 0x20;
-        menu->addAction(QString("Change elevator setting (speed %1; time %2)").arg(speed, 2, 16, QChar('0')).arg(time, 2, 16, QChar('0')));
-    }
-
-    //board speed
-    if (spriteID == 0x54)
-    {
-        if (!flag)
-            menu->addAction(QString("Switch speed (normal)"));
-        else
-            menu->addAction(QString("Switch speed (slow)"));
-    }
-
-    if ((spriteID == 0xB8) || (spriteID == 0x6E) || (spriteID == 0x9A) || (spriteID == 0xCC))
-        menu->addAction(QString("Edit (unkown) flag byte (%1)").arg(flag));
-
-    menu->addAction("Delete sprite");
-
-    if (menu->actions().size() > 0)
-    {
-        QAction *selected = menu->exec(globalPos);
-        if (selected != NULL)
-        {
-            if (selected->text().startsWith("Flip"))
-            {
-                if (spriteID == 0x7F)
-                {
-                    if (flag == 0x00)
-                        flag = 0x01;
-                    else
-                        flag = 0x00;
-                }
-
-                if ((spriteID == 0x80) || (spriteID == 0x98) || (spriteID == 0x84))
-                {
-                    if ((flag & 1) == 0x01)
-                        flag ^= 1;
-                    else
-                        flag |= 1;
-                }
-            }
-            else if (selected->text().startsWith("Change speed"))
-            {
-                quint8 newSpeed = QInputDialog::getInt(this, "Sprite property", "Running speed:", (flag >> 1), 0, 127);
-                flag = (newSpeed * 2) | (flag & 1);
-            }
-            else if (selected->text().startsWith("Switch speed"))
-            {
-                if (flag)
-                    flag = 0;
-                else
-                    flag = 1;
-            }
-            else if (selected->text().startsWith("Change elevator"))
-            {
-                flag = QInputDialog::getInt(this, "Sprite property", "Elevator setting:", flag, 0, 15);
-            }
-            else if (selected->text().startsWith("Delete sprite"))
-            {
-                ui->lvlEdit->deleteSprite(ui->lstSprites->row(item));
-                return;
-            }
-            else if (selected->text().startsWith("Edit"))
-            {
-                flag = QInputDialog::getInt(this, "Sprite property", "(Unkown) flag byte:", flag, 0, 255);
-            }
-            else
-                qWarning() << QString("Unhandled context menu selection: %1").arg(selected->text());
-
-            ui->lvlEdit->setSpriteFlag(ui->lstSprites->row(item), flag);
-        }
-    }
-}
-
-void MainWindow::on_lstSprites_customContextMenuRequested(const QPoint &pos)
-{
-    QListWidgetItem *item = ui->lstSprites->itemAt(pos);
-    if (item == NULL)
-        return;
-
-    spriteContextMenu(item, ui->lstSprites->mapToGlobal(pos));
-}
-
-void MainWindow::on_lvlEdit_customContextMenuRequested(const QPoint &pos)
-{
-    QListWidgetItem *item = ui->lstSprites->currentItem();
-    if (item == NULL)
-        return;
-
-    spriteContextMenu(item, ui->lvlEdit->mapToGlobal(pos));
-}*/

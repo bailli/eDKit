@@ -38,6 +38,7 @@
 // BGP depends on tileset asm @ 0E9D
 
 #define ELEVATOR_TABLE 0x30F77
+class QMouseEvent;
 
 struct QDKSprite : QSprite
 {
@@ -117,7 +118,9 @@ public:
     QString spriteNumToString(int sprite);
 
 private:
-    void paintEvent(QPaintEvent *e);
+    void paintLevel(QPainter *painter);
+    void mouseMoveEvent(QMouseEvent *e);
+    void mousePressEvent(QMouseEvent *e);
     QByteArray LZSSDecompress(QDataStream *in, quint16 decompressedSize);
     QByteArray LZSSCompress(QByteArray *src);
     bool readLevel(QFile *src, quint8 id);
@@ -152,7 +155,10 @@ private:
     quint8 currentTileset;
     quint16 currentTime;
     quint16 currentPalIndex;
-    int switchMode;
+
+    bool switchMode;
+    int switchToEdit;
+    int swObjToMove;
 
     QList<QDKSwitch> currentSwitches;
 
@@ -185,9 +191,12 @@ public slots:
     void changeSpriteTransparency(bool transparent);
     void addSprite(int id);
 
-    void highlightSwitch(int num);
+    void toggleSwitchMode(bool enabled);
+    void toggleSwitchMode(int enabled);
+
+    void selectSwitch(int num);
     void deleteSwitchObj(int num);
-    void addSwitchObj(QDKSwitchObject newObj);
+    void deleteCurrentSwitch();
 };
 
 #endif // QDKEDIT_H

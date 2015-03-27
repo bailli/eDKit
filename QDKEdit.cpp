@@ -4,6 +4,7 @@
 #include "QTileSelector.h"
 #include <QtCore/QDir>
 #include <QtGui/QBitmap>
+#include <QtGui/QMouseEvent>
 
 bool QDKEdit::isSprite[] = {
     false, false, false, false, false, false, false, false,
@@ -42,7 +43,7 @@ bool QDKEdit::isSprite[] = {
 
 
 QDKEdit::QDKEdit(QWidget *parent) :
-    QTileEdit(parent), switchMode(-1), romLoaded(false)
+    QTileEdit(parent), switchMode(false), switchToEdit(-1), romLoaded(false)
 {
     currentLevel = -1;
     dataIsChanged = false;
@@ -1946,7 +1947,7 @@ void QDKEdit::changeLevel(int id)
 
     dataIsChanged = false;
     currentLevel = id;
-    switchMode = -1;
+    switchToEdit = -1;
 
     lvlData.clear();
     lvlData.append(levels[currentLevel].displayTilemap);
@@ -2107,76 +2108,508 @@ QString QDKEdit::getLevelInfo()
     return str;
 }
 
-void QDKEdit::highlightSwitch(int num)
+void QDKEdit::selectSwitch(int num)
 {
-    switchMode = num;
+    switchToEdit = num;
+    update();
+}
+
+void QDKEdit::deleteCurrentSwitch()
+{
+    if (switchToEdit < 0)
+        return;
+
+    currentSwitches[switchToEdit].connectedTo.clear();
+    currentSwitches.removeAt(switchToEdit);
+    dataIsChanged = true;
+    emit switchRemoved(switchToEdit);
+    swObjToMove = -1;
+    switchToEdit = -1;
     update();
 }
 
 void QDKEdit::deleteSwitchObj(int num)
 {
-    if ((switchMode < 0) && (switchMode < currentSwitches.size()) && (num < currentSwitches.at(switchMode).connectedTo.size()))
+    if ((switchToEdit < 0) || (switchToEdit >= currentSwitches.size()) || (num >= currentSwitches.at(switchToEdit).connectedTo.size()))
         return;
 
-    currentSwitches[switchMode].connectedTo.removeAt(num);
+    currentSwitches[switchToEdit].connectedTo.removeAt(num);
     dataIsChanged = true;
+    swObjToMove = -1;
     update();
-    emit switchUpdated(switchMode, &currentSwitches[switchMode]);
+    emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
 }
 
-void QDKEdit::addSwitchObj(QDKSwitchObject newObj)
+void QDKEdit::toggleSwitchMode(bool enabled)
 {
-
+    switchMode = enabled;
+    if (enabled)
+        spriteMode = true;
 }
 
-void QDKEdit::paintEvent(QPaintEvent *e)
+void QDKEdit::toggleSwitchMode(int enabled)
 {
-    QTileEdit::paintEvent(e);
+    toggleSwitchMode(enabled > 0);
+}
 
-    QPainter *painter = getPainter();
 
-    if (!painter)
+void QDKEdit::mouseMoveEvent(QMouseEvent *e)
+{
+    if (!switchMode)
+    {
+        QTileEdit::mouseMoveEvent(e);
         return;
+    }
+
+    // check for specific tiles and sprites
+    // tiles
+    // 0x09 0x0A conveyer belt
+    // 0x1A 0x20 0x2E switches
+    // 0x29 shutter
+    // 0x2A floor
+    // 0x70 0x72 elevator up/down
+    // 0xB9 bird's nest
+
+    //sprites
+    // 0x54 moving board
+
+    QRect newSelection = QRect(0,0,0,0);
+    QRect spriteRect;
+
+    //check tiles
+    int xTile = (float)e->x() / (float)tileSize.width() / scaleFactorX;
+    int yTile = (float)e->y() / (float)tileSize.height() / scaleFactorY;
+    int tileNum = getTile(xTile, yTile);
+    int spriteNum;
+    int tmp;
+
+    if (!mousePressed)
+    {
+        if (switchToEdit > -1)
+        {
+            //check for current (misplaced) switch
+            if ((currentSwitches.at(switchToEdit).x == xTile) && (currentSwitches.at(switchToEdit).y == yTile))
+            {
+                if ((tileNum == 0x1A) || (tileNum == 0x20) || (tileNum == 0x2E))
+                    newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()*2-1, tileSize.height()*2-1);
+                else
+                    newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()-1, tileSize.height()-1);;
+            }
+            else // check for current (misplaced) switch objects
+            {
+                for (tmp = 0; tmp < currentSwitches.at(switchToEdit).connectedTo.size(); tmp++)
+                    if ((currentSwitches.at(switchToEdit).connectedTo.at(tmp).x == xTile) && (currentSwitches.at(switchToEdit).connectedTo.at(tmp).y == yTile))
+                        break;
+
+                if (tmp != currentSwitches.at(switchToEdit).connectedTo.size())
+                {
+                    //tiles
+                    if (!currentSwitches.at(switchToEdit).connectedTo.at(tmp).isSprite)
+                    {
+                        if ((tileNum == 0x09) || (tileNum == 0x0A) || (tileNum == 0x1A) || (tileNum == 0x20) || (tileNum == 0x2E)
+                                || (tileNum == 0x29) || (tileNum == 0x2A) || (tileNum == 0x70) || (tileNum == 0x72) || (tileNum == 0xB9))
+                            newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tiles[tileNum].w * tileSize.width()-1, tiles[tileNum].h * tileSize.height()-1);
+                        else
+                            newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
+                    }
+                    else // sprites
+                    {
+                        int j;
+                        for (j = 0; j < sprites.size(); j++)
+                            if ((sprites.at(j).id == 0x54) && (sprites.at(j).x == currentSwitches.at(switchToEdit).connectedTo.at(tmp).x) && (sprites.at(j).y == currentSwitches.at(switchToEdit).connectedTo.at(tmp).y))
+                                break;
+
+                        if (j != sprites.size())
+                            newSelection = QRect(currentSwitches.at(switchToEdit).connectedTo.at(tmp).x*tileSize.width()-tileSize.width()/2, currentSwitches.at(switchToEdit).connectedTo.at(tmp).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()-1);
+                        else
+                            newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (tmp = 0; tmp < currentSwitches.size(); tmp++)
+                if ((currentSwitches.at(tmp).x == xTile) && (currentSwitches.at(tmp).y == yTile))
+                    break;
+
+            if (tmp != currentSwitches.size())
+                if ((tileNum == 0x1A) || (tileNum == 0x20) || (tileNum == 0x2E))
+                    newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()*2-1, tileSize.height()*2-1);
+                else
+                    newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()-1, tileSize.height()-1);;
+        }
+
+        // change xTile, yTile for large tiles
+        if (tileNum > 0xFF)
+        {
+            tmp = tileNum - 0x100;
+            if ((tmp >= tiles[0x1A].additionalTilesAt) && (tmp < tiles[0x1A].additionalTilesAt+tiles[0x1A].count-1))
+            {
+                tmp -= tiles[0x1A].additionalTilesAt - 1;
+                xTile -= tmp % tiles[0x1A].w;
+                yTile -= tmp / tiles[0x1A].w;
+                if (getTile(xTile, yTile) == 0x1A)
+                    tileNum = 0x1A;
+            }
+
+            if ((tmp >= tiles[0x20].additionalTilesAt) && (tmp < tiles[0x20].additionalTilesAt+tiles[0x20].count-1))
+            {
+                tmp -= tiles[0x20].additionalTilesAt - 1;
+                xTile -= tmp % tiles[0x20].w;
+                yTile -= tmp / tiles[0x20].w;
+                if (getTile(xTile, yTile) == 0x20)
+                    tileNum = 0x20;
+            }
+
+            if ((tmp >= tiles[0x2E].additionalTilesAt) && (tmp < tiles[0x2E].additionalTilesAt+tiles[0x2E].count-1))
+            {
+                tmp -= tiles[0x2E].additionalTilesAt - 1;
+                xTile -= tmp % tiles[0x2E].w;
+                yTile -= tmp / tiles[0x2E].w;
+                if (getTile(xTile, yTile) == 0x2E)
+                    tileNum = 0x2E;
+            }
+
+            if ((tmp >= tiles[0x70].additionalTilesAt) && (tmp < tiles[0x70].additionalTilesAt+tiles[0x70].count-1))
+            {
+                tmp -= tiles[0x70].additionalTilesAt - 1;
+                xTile -= tmp % tiles[0x70].w;
+                yTile -= tmp / tiles[0x70].w;
+                if (getTile(xTile, yTile) == 0x70)
+                    tileNum = 0x70;
+            }
+
+            if ((tmp >= tiles[0x72].additionalTilesAt) && (tmp < tiles[0x72].additionalTilesAt+tiles[0x72].count-1))
+            {
+                tmp -= tiles[0x72].additionalTilesAt - 1;
+                xTile -= tmp % tiles[0x72].w;
+                yTile -= tmp / tiles[0x72].w;
+                if (getTile(xTile, yTile) == 0x72)
+                    tileNum = 0x72;
+            }
+
+            if ((tmp >= tiles[0xB9].additionalTilesAt) && (tmp < tiles[0xB9].additionalTilesAt+tiles[0xB9].count-1))
+            {
+                tmp -= tiles[0xB9].additionalTilesAt - 1;
+                xTile -= tmp % tiles[0xB9].w;
+                yTile -= tmp / tiles[0xB9].w;
+                if (getTile(xTile, yTile) == 0xB9)
+                    tileNum = 0xB9;
+            }
+        }
+
+        // check for valid unused objects
+        if (newSelection == QRect(0,0,0,0))
+        {
+            if ((tileNum == 0x09) || (tileNum == 0x0A) || (tileNum == 0x1A) || (tileNum == 0x20) || (tileNum == 0x2E)
+             || (tileNum == 0x29) || (tileNum == 0x2A) || (tileNum == 0x70) || (tileNum == 0x72) || (tileNum == 0xB9))
+            {
+                if (!((switchToEdit < 0) && (tileNum != 0x1A) && (tileNum != 0x20) && (tileNum != 0x2E)))
+                    newSelection = QRect(xTile * tileSize.width(), yTile * tileSize.height(), tiles[tileNum].w * tileSize.width()-1, tiles[tileNum].h * tileSize.height()-1);
+            }
+            else
+            {
+                spriteNum = getSpriteAtXY((float)e->x() / scaleFactorX, (float)e->y() /  scaleFactorY, &spriteRect);
+                if ((spriteNum != 1) && (sprites.at(spriteNum).id == 0x54))
+                    newSelection = spriteRect;
+            }
+        }
+
+        if (newSelection != QRect(0,0,0,0))
+        {
+            mouseOverTile = newSelection;
+            update();
+        }
+        else if (mouseOverTile != QRect())
+        {
+            mouseOverTile = QRect();
+            update();
+        }
+        swObjToMove = -1;
+    }
+
+    if (e->buttons() != Qt::LeftButton)
+        return;
+
+    // box gets moved
+    // calculate new x,y
+    int newX, newY;
+
+    newX = (float)e->x() / (float)tileSize.width() / scaleFactorX;
+    newY = (float)e->y() / (float)tileSize.height() / scaleFactorY;
+    xTile = mouseOverTile.x() / tileSize.width();
+    yTile = mouseOverTile.y() / tileSize.height();
+
+    if ((newX != xTile) || (newY != yTile))
+    {
+/*        int i;
+        if (switchToEdit < 0)
+        {
+            for (i = 0; i < currentSwitches.size(); i++)
+                if ((currentSwitches.at(i).x == xTile) && (currentSwitches.at(i).y == yTile))
+                    break;
+
+            if (i == currentSwitches.size())
+            {
+                qWarning() << "moved unkown switch?!" << mouseOverTile;
+                return;
+            }
+
+            currentSwitches[i].x = newX;
+            currentSwitches[i].y = newY;
+        }*/
+        if (switchToEdit > -1)
+        {
+            if (switchToEdit >= currentSwitches.size())
+                return;
+
+            if (swObjToMove == -1)
+                    return;
+
+            if (swObjToMove > currentSwitches.at(switchToEdit).connectedTo.size())
+                    return;
+
+            if (swObjToMove == currentSwitches.at(switchToEdit).connectedTo.size())
+            {
+                if ((currentSwitches.at(switchToEdit).x != newX) || (currentSwitches.at(switchToEdit).y != newY))
+                {
+                        currentSwitches[switchToEdit].x = newX;
+                        currentSwitches[switchToEdit].y = newY;
+                        mouseOverTile = QRect(newX * tileSize.width(), newY * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
+                        dataIsChanged = true;
+                        emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
+                        update();
+                }
+            }
+            else if ((currentSwitches.at(switchToEdit).connectedTo.at(swObjToMove).x != newX) || (currentSwitches.at(switchToEdit).connectedTo.at(swObjToMove).y != newY))
+            {
+                    currentSwitches[switchToEdit].connectedTo[swObjToMove].x = newX;
+                    currentSwitches[switchToEdit].connectedTo[swObjToMove].y = newY;
+                    mouseOverTile = QRect(newX * tileSize.width(), newY * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
+                    dataIsChanged = true;
+                    emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
+                    update();
+            }
+        }
+
+    }
+
+}
+
+void QDKEdit::mousePressEvent(QMouseEvent *e)
+{
+    if (!switchMode)
+    {
+        QTileEdit::mousePressEvent(e);
+        return;
+    }
+
+    if (e->type() == QEvent::MouseButtonPress)
+        mousePressed = true;
+
+    if ((e->button() == Qt::LeftButton) || (e->button() == Qt::RightButton) || (e->button() == Qt::MiddleButton))
+    {
+        if (mouseOverTile != QRect())
+        {
+            int xTile = mouseOverTile.x() / tileSize.width();
+            int yTile = mouseOverTile.y() / tileSize.height();
+
+            if (switchToEdit < 0)
+            {
+                int i;
+                for (i = 0; i < currentSwitches.size(); i++)
+                    if ((currentSwitches.at(i).x == xTile) && (currentSwitches.at(i).y == yTile))
+                    {
+                        switchToEdit = i;
+                        swObjToMove = currentSwitches.at(i).connectedTo.size();
+                        break;
+                    }
+
+                if ((e->button() == Qt::LeftButton) && (i == currentSwitches.size()))
+                {
+                    // add a new switch
+                    QDKSwitch newSwitch;
+                    newSwitch.state = 0;
+                    newSwitch.x = xTile;
+                    newSwitch.y = yTile;
+                    newSwitch.levelPos = yTile * levelDimension.width() + xTile;
+                    newSwitch.ramPos = newSwitch.levelPos + 0xD44D;
+
+                    currentSwitches.append(newSwitch);
+                    switchToEdit = currentSwitches.size() - 1;
+
+                    dataIsChanged = true;
+                    emit switchAdded(&currentSwitches[currentSwitches.size()-1]);
+                    update();
+                }
+            }
+            else
+            {
+                int i;
+                for (i = 0; i < currentSwitches.at(switchToEdit).connectedTo.size(); i++)
+                    if ((currentSwitches.at(switchToEdit).connectedTo.at(i).x == xTile) && (currentSwitches.at(switchToEdit).connectedTo.at(i).y == yTile))
+                    {
+                        swObjToMove = i;
+                        break;
+                    }
+
+                // additional check for moving boards --- xTile is incorrect because of drawOffset
+                if (i == currentSwitches.at(switchToEdit).connectedTo.size())
+                {
+                    for (i = 0; i < currentSwitches.at(switchToEdit).connectedTo.size(); i++)
+                        if (currentSwitches.at(switchToEdit).connectedTo.at(i).isSprite && (currentSwitches.at(switchToEdit).connectedTo.at(i).x == xTile+1) && (currentSwitches.at(switchToEdit).connectedTo.at(i).y == yTile))
+                        {
+                            swObjToMove = i;
+                            break;
+                        }
+                }
+
+                if ((i == currentSwitches.at(switchToEdit).connectedTo.size()) && (currentSwitches.at(switchToEdit).x == xTile) && (currentSwitches.at(switchToEdit).y == yTile))
+                    swObjToMove = currentSwitches.at(switchToEdit).connectedTo.size();
+
+                if ((e->button() == Qt::LeftButton) && (i == currentSwitches.at(switchToEdit).connectedTo.size()) && ((currentSwitches.at(switchToEdit).x != xTile) || (currentSwitches.at(switchToEdit).y != yTile)))
+                {
+                    // add a new object to switchToEdit
+                    QDKSwitchObject newObj;
+                    newObj.x = xTile;
+                    newObj.y = yTile;
+
+                    int tileNum = getTile(xTile, yTile);
+                    if ((tileNum == 0x09) || (tileNum == 0x0A) || (tileNum == 0x1A) || (tileNum == 0x20) || (tileNum == 0x2E)
+                     || (tileNum == 0x29) || (tileNum == 0x2A) || (tileNum == 0x70) || (tileNum == 0x72) || (tileNum == 0xB9))
+                    {
+                        //tile
+                        newObj.isSprite = false;
+                        newObj.levelPos = yTile * levelDimension.width() + xTile;
+                        newObj.ramPos = newObj.levelPos + 0xD44D;
+                    }
+                    else //sprite
+                    {
+                        newObj.isSprite = true;
+                        newObj.x += 1;
+                        newObj.levelPos = yTile * levelDimension.width() + xTile + 1;
+                        newObj.ramPos = newObj.levelPos + 0xDA75;
+                    }
+
+                    currentSwitches[switchToEdit].connectedTo.append(newObj);
+                    swObjToMove = currentSwitches[switchToEdit].connectedTo.size() - 1;
+                    dataIsChanged = true;
+                    emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
+                    update();
+                }
+            }
+
+            update();
+        }
+        else
+        {
+            switchToEdit = -1;
+            swObjToMove = -1;
+            update();
+            mouseMoveEvent(e);
+        }
+    }
+
+    if (e->button() == Qt::RightButton)
+    {
+        if (swObjToMove != -1)
+        {
+            // check for switch
+            if (swObjToMove == currentSwitches.at(switchToEdit).connectedTo.size())
+            {
+                currentSwitches[switchToEdit].connectedTo.clear();
+                currentSwitches.removeAt(switchToEdit);
+                dataIsChanged = true;
+                emit switchRemoved(switchToEdit);
+                swObjToMove = -1;
+                switchToEdit = -1;
+            }
+            else // object
+            {
+                currentSwitches[switchToEdit].connectedTo.removeAt(swObjToMove);
+                swObjToMove = -1;
+                dataIsChanged = true;
+                emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
+            }
+        }
+    }
+
+    if ((e->button() == Qt::MiddleButton) && (switchToEdit != -1) && (swObjToMove != -1) && (swObjToMove == currentSwitches.at(switchToEdit).connectedTo.size()))
+    {
+        if (currentSwitches.at(switchToEdit).state < 2)
+            currentSwitches[switchToEdit].state++;
+        else
+            currentSwitches[switchToEdit].state = 0;
+
+        dataIsChanged = true;
+        emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
+    }
+}
+
+
+void QDKEdit::paintLevel(QPainter *painter)
+{
+    QTileEdit::paintLevel(painter);
 
     int rawPos;
 
-    if ((switchMode > -1) && (switchMode < currentSwitches.size()))
+    if (!switchMode)
+        return;
+
+    if (switchToEdit < 0) // draw all switch object positions
     {
-        rawPos = (currentSwitches.at(switchMode).y * levelDimension.width() + currentSwitches.at(switchMode).x) * 2;
-        if ((lvlData[rawPos] == 0x1A) || (lvlData[rawPos] == 0x20) || (lvlData[rawPos] == 0x2E))
-            painter->setPen(Qt::darkGreen);
-        else
-            painter->setPen(Qt::magenta);
-
-        painter->drawRect(QRect(currentSwitches.at(switchMode).x*tileSize.width(), currentSwitches.at(switchMode).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()*2-1));
-        for (int  i = 0; i < currentSwitches.at(switchMode).connectedTo.size(); i++)
+        painter->setPen(Qt::blue);
+        for (int i = 0; i < currentSwitches.size(); i++)
         {
-            rawPos = (currentSwitches.at(switchMode).connectedTo.at(i).y * levelDimension.width() + currentSwitches.at(switchMode).connectedTo.at(i).x) * 2;
-            //tiles
-            // 0x09 0x0A conveyer belt
-            // 0x1A 0x20 0x2E switches
-            // 0x29 shutter
-            // 0x2A floor
-            // 0x70 0x72 elevator up/down
-            // 0xB9 bird's nest
+            rawPos = (currentSwitches.at(i).y * levelDimension.width() + currentSwitches.at(i).x) * 2;
 
-            //sprites
-            // 0x54 moving board
-            painter->setPen(Qt::blue);
-            if (!currentSwitches.at(switchMode).connectedTo.at(i).isSprite)
+            if ((lvlData[rawPos] == 0x1A) || (lvlData[rawPos] == 0x20) || (lvlData[rawPos] == 0x2E))
             {
-                if ((lvlData[rawPos] == 0x09) || (lvlData[rawPos] == 0x0A) || (lvlData[rawPos] == 0x1A)
+                painter->setPen(Qt::blue);
+                painter->drawRect(QRect(currentSwitches.at(i).x*tileSize.width(), currentSwitches.at(i).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()*2-1));
+            }
+            else
+            {
+                painter->setPen(Qt::red);
+                painter->drawRect(QRect(currentSwitches.at(i).x*tileSize.width(), currentSwitches.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
+            }
+        }
+    }
+    else // draw only selected switch and its connected objects
+    {
+        rawPos = (currentSwitches.at(switchToEdit).y * levelDimension.width() + currentSwitches.at(switchToEdit).x) * 2;
+
+        if ((lvlData[rawPos] == 0x1A) || (lvlData[rawPos] == 0x20) || (lvlData[rawPos] == 0x2E))
+        {
+            painter->setPen(Qt::red);
+            painter->drawRect(QRect(currentSwitches.at(switchToEdit).x*tileSize.width(), currentSwitches.at(switchToEdit).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()*2-1));
+        }
+        else
+        {
+            painter->setPen(Qt::magenta);
+            painter->drawRect(QRect(currentSwitches.at(switchToEdit).x*tileSize.width(), currentSwitches.at(switchToEdit).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
+        }
+
+        for (int  i = 0; i < currentSwitches.at(switchToEdit).connectedTo.size(); i++)
+        {
+            rawPos = (currentSwitches.at(switchToEdit).connectedTo.at(i).y * levelDimension.width() + currentSwitches.at(switchToEdit).connectedTo.at(i).x) * 2;
+
+            painter->setPen(Qt::blue);
+            if (!currentSwitches.at(switchToEdit).connectedTo.at(i).isSprite)
+            {
+                if ((lvlData[rawPos] == 0x09) || (lvlData[rawPos] == 0x0A)
                  || (lvlData[rawPos] == 0x1A) || (lvlData[rawPos] == 0x20) || (lvlData[rawPos] == 0x2E)
                  || (lvlData[rawPos] == 0x29) || (lvlData[rawPos] == 0x2A) || (lvlData[rawPos] == 0x70)
                  || (lvlData[rawPos] == 0x72) || (lvlData[rawPos] == 0xB9))
                 {
                     painter->setPen(Qt::green);
-                    painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), (tileSize.width()*tiles[(quint8)lvlData[rawPos]].w)-1, (tileSize.height()*tiles[(quint8)lvlData[rawPos]].h)-1));
+                    painter->drawRect(QRect(currentSwitches.at(switchToEdit).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchToEdit).connectedTo.at(i).y*tileSize.height(), (tileSize.width()*tiles[(quint8)lvlData[rawPos]].w)-1, (tileSize.height()*tiles[(quint8)lvlData[rawPos]].h)-1));
                 }
                 else
                 {
                     painter->setPen(Qt::blue);
-                    painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
+                    painter->drawRect(QRect(currentSwitches.at(switchToEdit).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchToEdit).connectedTo.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
                 }
 
             }
@@ -2185,17 +2618,19 @@ void QDKEdit::paintEvent(QPaintEvent *e)
                 painter->setPen(Qt::blue);
                 int j;
                 for (j = 0; j < sprites.size(); j++)
-                    if ((sprites.at(j).id == 0x54) && (sprites.at(j).x == currentSwitches.at(switchMode).connectedTo.at(i).x) && (sprites.at(j).y == currentSwitches.at(switchMode).connectedTo.at(i).y))
+                    if ((sprites.at(j).id == 0x54) && (sprites.at(j).x == currentSwitches.at(switchToEdit).connectedTo.at(i).x) && (sprites.at(j).y == currentSwitches.at(switchToEdit).connectedTo.at(i).y))
                     {
                         painter->setPen(Qt::green);
-                        painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width()-tileSize.width()/2, currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()-1));
+                        painter->drawRect(QRect(currentSwitches.at(switchToEdit).connectedTo.at(i).x*tileSize.width()-tileSize.width()/2, currentSwitches.at(switchToEdit).connectedTo.at(i).y*tileSize.height(), tileSize.width()*2-1, tileSize.height()-1));
                         break;
                     }
                 if (j >= sprites.size())
-                    painter->drawRect(QRect(currentSwitches.at(switchMode).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchMode).connectedTo.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
+                    painter->drawRect(QRect(currentSwitches.at(switchToEdit).connectedTo.at(i).x*tileSize.width(), currentSwitches.at(switchToEdit).connectedTo.at(i).y*tileSize.height(), tileSize.width()-1, tileSize.height()-1));
             }
         }
     }
 
-    finishPainter(painter);
+    // redraw selection since it might get covered
+    painter->setPen(Qt::gray);
+    painter->drawRect(mouseOverTile.x(), mouseOverTile.y(), mouseOverTile.width(), mouseOverTile.height());
 }
