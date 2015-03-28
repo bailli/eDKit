@@ -10,9 +10,9 @@ bool QDKEdit::isSprite[] = {
     false, false, false, false, false, false, false, false,
     false, false, false, false, false, false, false, false,
     false, false, false, false, false, false, false, false,
-    false, false, true, false, false, false, false, false,
-    true, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, true, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false,
     false, false, false, false, false, false, false, false,
     false, false, true , false, false, false, false, false,
     false, false, false, false, true , false, false, true ,
@@ -1224,7 +1224,12 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                 if (tiles[id].compressed)
                 {
                     QDataStream decomp(src);
-                    decompressed = LZSSDecompress(&decomp, 0x10*tiles[id].fullCount);
+                    quint16 decompSize;
+                    if (id == 0xC2)
+                        decompSize = 0x10*(tiles[id].count+2);
+                    else
+                        decompSize = 0x10*tiles[id].count;
+                    decompressed = LZSSDecompress(&decomp, decompSize);
                     in = new QDataStream(decompressed);
                 }
                 else
@@ -1499,6 +1504,8 @@ QByteArray QDKEdit::LZSSDecompress(QDataStream *in, quint16 decompressedSize)
                 len = len % 0x10;
 
                 len += 3;
+                if (start == 0)
+                    qDebug() << decompressed.size();
                 offset = decompressed.size() - start;
                 //qDebug() << "start " << start << " length " << len;
 
@@ -1947,7 +1954,8 @@ void QDKEdit::changeLevel(int id)
 
     dataIsChanged = false;
     currentLevel = id;
-    switchToEdit = -1;
+    swObjToMove = -1;
+    spriteToMove = -1;
 
     lvlData.clear();
     lvlData.append(levels[currentLevel].displayTilemap);
@@ -1977,6 +1985,8 @@ void QDKEdit::changeLevel(int id)
 
     for (int i = currentSwitches.size()-1; i >= 0; i--)
         emit switchRemoved(i);
+
+    switchToEdit = -1;
 
     sprites.clear();
     currentSwitches.clear();
@@ -2311,7 +2321,7 @@ void QDKEdit::mouseMoveEvent(QMouseEvent *e)
             else
             {
                 spriteNum = getSpriteAtXY((float)e->x() / scaleFactorX, (float)e->y() /  scaleFactorY, &spriteRect);
-                if ((spriteNum != 1) && (sprites.at(spriteNum).id == 0x54))
+                if ((spriteNum != -1) && (sprites.at(spriteNum).id == 0x54))
                     newSelection = spriteRect;
             }
         }
