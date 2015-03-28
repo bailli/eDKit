@@ -1227,6 +1227,8 @@ bool QDKEdit::createSprites(QFile *src, QGBPalette palette)
                     quint16 decompSize;
                     if (id == 0xC2)
                         decompSize = 0x10*(tiles[id].count+2);
+                    else if (id == 0x8E)
+                        decompSize = 0x40;
                     else
                         decompSize = 0x10*tiles[id].count;
                     decompressed = LZSSDecompress(&decomp, decompSize);
