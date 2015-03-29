@@ -126,6 +126,19 @@ void QTileEdit::setTile(int offset, int tileNumber)
 }
 
 
+QString QTileEdit::spriteNumToString(int sprite)
+{
+    return spriteNames.value(sprite, QString("Sprite 0x%1").arg(sprite, 2, 16, QChar('0')));
+}
+
+QString QTileEdit::tileNumToString(int tile)
+{
+    if (tileDataIs16bit)
+        return tileNames.value(tile, QString("0x%1").arg(tile, 4, 16, QChar('0')));
+    else
+        return tileNames.value(tile, QString("0x%1").arg(tile, 2, 16, QChar('0')));
+}
+
 QRect QTileEdit::tileNumberToQRect(int tileNumber)
 {
     int x, y, x2, y2;
@@ -300,7 +313,7 @@ void QTileEdit::mouseMoveEvent(QMouseEvent *e)
         int xTile= (float)e->x() / (float)tileSize.width() / scaleFactorX;
         int yTile = (float)e->y() / (float)tileSize.height() / scaleFactorY;
 
-        setToolTip(QString("0x%1 - x: %2 y: %3").arg(getTile(xTile, yTile), 2*((int)tileDataIs16bit+1), 16, QChar('0')).arg(xTile).arg(yTile));
+        setToolTip(QString("%1 (%2x%3)").arg(tileNumToString(getTile(xTile, yTile))).arg(xTile).arg(yTile));
 
         QRect newSelection(xTile * tileSize.width(), yTile * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
 
@@ -573,6 +586,7 @@ void QTileEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int 
     QFile names("tiles.txt");
     QStringList tileNames;
     if (names.exists())
+    {
         if (names.open(QIODevice::ReadOnly))
         {
             QTextStream namesStream(&names);
@@ -581,6 +595,10 @@ void QTileEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int 
                 tileNames.append(namesStream.readLine());
             }
         }
+    }
+    else
+        for (int i = 0; i < limitTileCount; i++)
+            tileNames.append(tileNumToString(i));
 
     int count;
 

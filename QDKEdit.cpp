@@ -50,6 +50,9 @@ QDKEdit::QDKEdit(QWidget *parent) :
     tileDataIs16bit = true;
     spriteContext = false;
 
+    fillTileNames();
+    fillSpriteNames();
+
     lvlData.resize(0x280*2);
     for (int i = 0; i < 0x280*2; i+=2)
     {
@@ -59,8 +62,6 @@ QDKEdit::QDKEdit(QWidget *parent) :
 
     lvlDataStart = 0;
     lvlDataLength = 0x280;
-
-    //spriteMode = true;
 
     setLevelDimension(32, 18);
     setTileSize(8, 8);
@@ -262,6 +263,30 @@ bool QDKEdit::loadAllLevels(QString romFile)
     rom.close();
 
     romLoaded = allOkay;
+
+    bool found;
+    int tile, level, pos;
+    for (tile = 0; tile < 0x100; tile++)
+    {
+        found = false;
+        for (level = 0; level < LAST_LEVEL; level++)
+        {
+            for (pos = 0; pos < levels[level].rawTilemap.size(); pos++)
+            {
+                if ((quint8)levels[level].rawTilemap[pos] == (quint8)tile)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+                break;
+        }
+        if (found)
+            qDebug() << QString("Tile 0x%1: Level %2: %3x%4").arg(tile, 2, 16, QChar('0')).arg(level).arg(pos % 0x20).arg(pos / 0x20);
+        else
+            qDebug() << QString("Tile 0x%1: not found").arg(tile, 2, 16, QChar('0'));
+    }
 
     return allOkay;
 }
@@ -1843,67 +1868,323 @@ void QDKEdit::updateSprite(int num)
     update();
 }
 
-QString QDKEdit::spriteNumToString(int sprite)
+void QDKEdit::fillTileNames()
 {
-  switch (sprite)
-  {
-  case 0x1a: return "On/off switch";
-  case 0x20: return "Enemy switch";
-  case 0x2e: return "3-pos switch";
-  case 0x3a: return "Donkey Kong (Klaptraps)";
-  case 0x44: return "Donkey Kong (Lvl 0-2)";
-  case 0x47: return "Crushing stone";
-  case 0x48: return "Octopus";
-  case 0x4d: return "Squid";
-  case 0x4e: return "Fish";
-  case 0x4f: return "Bat";
-  case 0x50: return "Walrus";
-  case 0x54: return "Board";
-  case 0x57: return "Hammer";
-  case 0x58: return "Skull";
-  case 0x5a: return "Hermit crab";
-  case 0x5c: return "Oil drum flames";
-  case 0x5e: return "Donkey Kong (fireballs)";
-  case 0x64: return "Enemy";
-  case 0x6e: return "Donkey Kong (barrels)";
-  case 0x70: return "Elevator up";
-  case 0x72: return "Elevator down";
-  case 0x7a: return "Giant DK";
-  case 0x7c: return "Flame";
-  case 0x7f: return "Mario";
-  case 0x80: return "Wall-walking friend";
-  case 0x84: return "Floating platform";
-  case 0x86: return "Walking enemy";
-  case 0x88: return "Knight";
-  case 0x8a: return "Donkey Kong (Egyptian/rock guys)";
-  case 0x8e: return "Wind";
-  case 0x90: return "Donkey Kong (spring)";
-  case 0x92: return "Donkey Kong (barrels left/right)";
-  case 0x94: return "Climbable monkey";
-  case 0x96: return "Falling icicle";
-  case 0x98: return "Wall-walking enemy";
-  case 0x9a: return "Donkey Kong (avalanche)";
-  case 0x9d: return "Fruit";
-  case 0xa2: return "Frog";
-  case 0xa4: return "Donkey Kong (boulders)";
-  case 0xa6: return "Donkey Kong (switch)";
-  case 0xa8: return "DK Junior (mushrooms/screen edge)";
-  case 0xaa: return "Donkey Kong (mushrooms)";
-  case 0xac: return "Trash can enemy";
-  case 0xae: return "Trash can";
-  case 0xb0: return "Walking block";
-  case 0xb6: return "Klaptrap";
-  case 0xb8: return "Key";
-  case 0xba: return "Oil can";
-  case 0xbe: return "Donkey Kong (pick-up barrels)";
-  case 0xc0: return "Panser";
-  case 0xc2: return "Pauline";
-  case 0xc6: return "DK Junior (switch)";
-  case 0xc8: return "Sleeping monkey";
-  case 0xca: return "DK Junior (mushrooms)";
-  case 0xcc: return "Donkey Kong (pick-up barrels)";
-  default: return QString("Sprite 0x%1").arg(sprite, 2, 16, QChar('0'));
-  }
+    tileNames.insert(0x00, "I-tile");
+    tileNames.insert(0x01, "ground");
+    tileNames.insert(0x02, "ground");
+    tileNames.insert(0x03, "ground");
+    tileNames.insert(0x04, "dissolving ground");
+    tileNames.insert(0x05, "spikes");
+    tileNames.insert(0x06, "ground");
+    tileNames.insert(0x07, "ladder");
+    tileNames.insert(0x08, "climbing pole");
+    tileNames.insert(0x09, "conveyer left");
+    tileNames.insert(0x0a, "conveyer right");
+    tileNames.insert(0x0b, "ground");
+    tileNames.insert(0x0c, "board track |");
+    tileNames.insert(0x0d, "board track -");
+    tileNames.insert(0x0e, "board track \\");
+    tileNames.insert(0x0f, "board track /");
+    tileNames.insert(0x10, "board track");
+    tileNames.insert(0x11, "board track");
+    tileNames.insert(0x12, "board track");
+    tileNames.insert(0x13, "board track");
+    tileNames.insert(0x14, "board track");
+    tileNames.insert(0x15, "board track");
+    tileNames.insert(0x16, "board track");
+    tileNames.insert(0x17, "board track");
+    tileNames.insert(0x18, "spring board");
+    tileNames.insert(0x19, "0x19 ???");
+    tileNames.insert(0x1a, "on-off switch");
+    tileNames.insert(0x1b, "board track bumper");
+    tileNames.insert(0x1c, "ground");
+    tileNames.insert(0x1d, "high wire");
+    tileNames.insert(0x1e, "high wire /");
+    tileNames.insert(0x1f, "high wire \\");
+    tileNames.insert(0x20, "DK switch");
+    tileNames.insert(0x21, "conveyer left end");
+    tileNames.insert(0x22, "conveyer right end");
+    tileNames.insert(0x23, "structure support (0-4)");
+    tileNames.insert(0x24, "elevator bottom - unused");
+    tileNames.insert(0x25, "mushroom - unused");
+    tileNames.insert(0x26, "spikes");
+    tileNames.insert(0x27, "ground");
+    tileNames.insert(0x28, "ground off-center");
+    tileNames.insert(0x29, "shutter");
+    tileNames.insert(0x2a, "retractable ground");
+    tileNames.insert(0x2b, "hanging spike");
+    tileNames.insert(0x2c, "moving ladder");
+    tileNames.insert(0x2d, "dissolving ground (enemy)");
+    tileNames.insert(0x2e, "3-pos switch");
+    tileNames.insert(0x2f, "pole tip");
+    tileNames.insert(0x30, "pole");
+    tileNames.insert(0x31, "waves");
+    tileNames.insert(0x32, "waves - unused");
+    tileNames.insert(0x33, "more waves - unused ???");
+    tileNames.insert(0x34, "conveyer right");
+    tileNames.insert(0x35, "more waves - unused ???");
+    tileNames.insert(0x36, "water");
+    tileNames.insert(0x37, "water fall");
+    tileNames.insert(0x38, "0x38 ???");
+    tileNames.insert(0x39, "elevetor top - unused");
+    tileNames.insert(0x3a, "sprite (DK)");
+    tileNames.insert(0x3b, "ground off-center");
+    tileNames.insert(0x3c, "0x3c ???");
+    tileNames.insert(0x3d, "0x3d ???");
+    tileNames.insert(0x3e, "0x3e ???");
+    tileNames.insert(0x3f, "0x3f ???");
+    tileNames.insert(0x40, "plant spitting left");
+    tileNames.insert(0x41, "plant spitting right");
+    tileNames.insert(0x42, "poisonous water");
+    tileNames.insert(0x43, "falling ground?");
+    tileNames.insert(0x44, "sprite (DK)");
+    tileNames.insert(0x45, "2-UP heart");
+    tileNames.insert(0x46, "0x46 ???");
+    tileNames.insert(0x47, "sprite (crushing stone)");
+    tileNames.insert(0x48, "sprite (octopus)");
+    tileNames.insert(0x49, "broken ladder");
+    tileNames.insert(0x4a, "pole tip");
+    tileNames.insert(0x4b, "fake exit");
+    tileNames.insert(0x4c, "ground");
+    tileNames.insert(0x4d, "sprite (squid)");
+    tileNames.insert(0x4e, "sprite (fish)");
+    tileNames.insert(0x4f, "sprite (bat)");
+    tileNames.insert(0x50, "sprite (walrus)");
+    tileNames.insert(0x51, "ladder");
+    tileNames.insert(0x52, "ground");
+    tileNames.insert(0x53, "umbrella");
+    tileNames.insert(0x54, "sprite (board)");
+    tileNames.insert(0x55, "ground");
+    tileNames.insert(0x56, "smashable block");
+    tileNames.insert(0x57, "sprite (hammer)");
+    tileNames.insert(0x58, "sprite (skull)");
+    tileNames.insert(0x59, "ground off-center+ladder");
+    tileNames.insert(0x5a, "sprite (crab)");
+    tileNames.insert(0x5b, "0x5b ???");
+    tileNames.insert(0x5c, "sprite (oil flames)");
+    tileNames.insert(0x5d, "spring board");
+    tileNames.insert(0x5e, "sprite (DK)");
+    tileNames.insert(0x5f, "ground off-center+ladder");
+    tileNames.insert(0x60, "X-tile");
+    tileNames.insert(0x61, "liana right");
+    tileNames.insert(0x62, "X-tile");
+    tileNames.insert(0x63, "liana right bottom");
+    tileNames.insert(0x64, "sprite (enemy)");
+    tileNames.insert(0x65, "hat");
+    tileNames.insert(0x66, "X-tile");
+    tileNames.insert(0x67, "bird's nest");
+    tileNames.insert(0x68, "cannon left");
+    tileNames.insert(0x69, "cannon right");
+    tileNames.insert(0x6a, "cannon");
+    tileNames.insert(0x6b, "cannon aiming");
+    tileNames.insert(0x6c, "cannon aiming");
+    tileNames.insert(0x6d, "cannon aiming");
+    tileNames.insert(0x6e, "sprite (DK)");
+    tileNames.insert(0x6f, "ground");
+    tileNames.insert(0x70, "elevator up - bottom");
+    tileNames.insert(0x71, "elevator up - top");
+    tileNames.insert(0x72, "elevator down - bottom");
+    tileNames.insert(0x73, "elevator down - top");
+    tileNames.insert(0x74, "0x74 ???");
+    tileNames.insert(0x75, "placable block");
+    tileNames.insert(0x76, "placable ladder ???");
+    tileNames.insert(0x77, "placeable spring board");
+    tileNames.insert(0x78, "placable question mark ???");
+    tileNames.insert(0x79, "exit");
+    tileNames.insert(0x7a, "sprite (DK)");
+    tileNames.insert(0x7b, "elevator track");
+    tileNames.insert(0x7c, "sprite (flame)");
+    tileNames.insert(0x7d, "winning tile");
+    tileNames.insert(0x7e, "0x7e ???");
+    tileNames.insert(0x7f, "sprite (Mario)");
+    tileNames.insert(0x80, "sprite (friend)");
+    tileNames.insert(0x81, "ground off-center");
+    tileNames.insert(0x82, "0x82 ???");
+    tileNames.insert(0x83, "ground off-center");
+    tileNames.insert(0x84, "sprite (platform)");
+    tileNames.insert(0x85, "ground off-center");
+    tileNames.insert(0x86, "sprite (enemy)");
+    tileNames.insert(0x87, "ground off-center");
+    tileNames.insert(0x88, "sprite (knight)");
+    tileNames.insert(0x89, "ground off-center");
+    tileNames.insert(0x8a, "sprite (DK)");
+    tileNames.insert(0x8b, "ground off-center+ladder");
+    tileNames.insert(0x8c, "X-tile");
+    tileNames.insert(0x8d, "ground off-center+ladder");
+    tileNames.insert(0x8e, "sprite (wind)");
+    tileNames.insert(0x8f, "ground off-center+ladder");
+    tileNames.insert(0x90, "sprite (DK)");
+    tileNames.insert(0x91, "ground off-center+ladder");
+    tileNames.insert(0x92, "sprite (DK)");
+    tileNames.insert(0x93, "ground off-center+ladder");
+    tileNames.insert(0x94, "sprite (monkey)");
+    tileNames.insert(0x95, "ground off-center+ladder");
+    tileNames.insert(0x96, "sprite (icile)");
+    tileNames.insert(0x97, "ground off-center+ladder");
+    tileNames.insert(0x98, "sprite (enemy)");
+    tileNames.insert(0x99, "ground off-center+ladder");
+    tileNames.insert(0x9a, "sprite (DK)");
+    tileNames.insert(0x9b, "ground off-center+ladder");
+    tileNames.insert(0x9c, "0x9c ???");
+    tileNames.insert(0x9d, "sprite (fruit)");
+    tileNames.insert(0x9e, "key");
+    tileNames.insert(0x9f, "ground off-center+ladder");
+    tileNames.insert(0xa0, "0xa0 ???");
+    tileNames.insert(0xa1, "ground off-center+ladder");
+    tileNames.insert(0xa2, "sprite (frog)");
+    tileNames.insert(0xa3, "ground off-center+ladder");
+    tileNames.insert(0xa4, "sprite (DK)");
+    tileNames.insert(0xa5, "liana left");
+    tileNames.insert(0xa6, "sprite (DK)");
+    tileNames.insert(0xa7, "liana left end");
+    tileNames.insert(0xa8, "sprite (DK Jr)");
+    tileNames.insert(0xa9, "oil drum");
+    tileNames.insert(0xaa, "sprite (DK)");
+    tileNames.insert(0xab, "1-UP heart");
+    tileNames.insert(0xac, "sprite (enemy)");
+    tileNames.insert(0xad, "water");
+    tileNames.insert(0xae, "sprite (trash)");
+    tileNames.insert(0xaf, "handbag");
+    tileNames.insert(0xb0, "sprite (block)");
+    tileNames.insert(0xb1, "3-UP heart");
+    tileNames.insert(0xb2, "cannon right");
+    tileNames.insert(0xb3, "cannon left");
+    tileNames.insert(0xb4, "cannon left");
+    tileNames.insert(0xb5, "cannon right");
+    tileNames.insert(0xb6, "sprite (klaptrap)");
+    tileNames.insert(0xb7, "ground off-center");
+    tileNames.insert(0xb8, "sprite (key)");
+    tileNames.insert(0xb9, "bird's nest");
+    tileNames.insert(0xba, "sprite (oil can)");
+    tileNames.insert(0xbb, "expanding ground");
+    tileNames.insert(0xbc, "expanding ladder");
+    tileNames.insert(0xbd, "placable block ???");
+    tileNames.insert(0xbe, "sprite (DK)");
+    tileNames.insert(0xbf, "mushroom - unused");
+    tileNames.insert(0xc0, "sprite (Panser)");
+    tileNames.insert(0xc1, "ground off-center+ladder");
+    tileNames.insert(0xc2, "sprite (Pauline)");
+    tileNames.insert(0xc3, "ground off-center+ladder");
+    tileNames.insert(0xc4, "super hammer");
+    tileNames.insert(0xc5, "ground off-center+ladder");
+    tileNames.insert(0xc6, "sprite (DK Jr)");
+    tileNames.insert(0xc7, "ground off-center+ladder");
+    tileNames.insert(0xc8, "sprite (monkey)");
+    tileNames.insert(0xc9, "ground off-center+ladder");
+    tileNames.insert(0xca, "sprite (DK Jr)");
+    tileNames.insert(0xcb, "ground off-center+ladder");
+    tileNames.insert(0xcc, "sprite (DK)");
+    tileNames.insert(0xcd, "background");
+    tileNames.insert(0xce, "background");
+    tileNames.insert(0xcf, "background");
+    tileNames.insert(0xd0, "background");
+    tileNames.insert(0xd1, "background");
+    tileNames.insert(0xd2, "background");
+    tileNames.insert(0xd3, "background");
+    tileNames.insert(0xd4, "background");
+    tileNames.insert(0xd5, "background");
+    tileNames.insert(0xd6, "background");
+    tileNames.insert(0xd7, "background");
+    tileNames.insert(0xd8, "background");
+    tileNames.insert(0xd9, "background");
+    tileNames.insert(0xda, "background");
+    tileNames.insert(0xdb, "background");
+    tileNames.insert(0xdc, "background");
+    tileNames.insert(0xdd, "background");
+    tileNames.insert(0xde, "background");
+    tileNames.insert(0xdf, "background");
+    tileNames.insert(0xe0, "background");
+    tileNames.insert(0xe1, "background");
+    tileNames.insert(0xe2, "background");
+    tileNames.insert(0xe3, "background");
+    tileNames.insert(0xe4, "background");
+    tileNames.insert(0xe5, "background");
+    tileNames.insert(0xe6, "background");
+    tileNames.insert(0xe7, "background");
+    tileNames.insert(0xe8, "background");
+    tileNames.insert(0xe9, "background");
+    tileNames.insert(0xea, "background");
+    tileNames.insert(0xeb, "background");
+    tileNames.insert(0xec, "background");
+    tileNames.insert(0xed, "background");
+    tileNames.insert(0xee, "background");
+    tileNames.insert(0xef, "background");
+    tileNames.insert(0xf0, "background");
+    tileNames.insert(0xf1, "background");
+    tileNames.insert(0xf2, "background");
+    tileNames.insert(0xf3, "background");
+    tileNames.insert(0xf4, "background");
+    tileNames.insert(0xf5, "background");
+    tileNames.insert(0xf6, "background");
+    tileNames.insert(0xf7, "background");
+    tileNames.insert(0xf8, "background");
+    tileNames.insert(0xf9, "background");
+    tileNames.insert(0xfa, "background");
+    tileNames.insert(0xfb, "background");
+    tileNames.insert(0xfc, "background");
+    tileNames.insert(0xfd, "ground");
+    tileNames.insert(0xfe, "X-tile");
+    tileNames.insert(0xff, "empty tile");
+}
+
+void QDKEdit::fillSpriteNames()
+{
+    spriteNames.insert(0x1a, "On/off switch");
+    spriteNames.insert(0x20, "Enemy switch");
+    spriteNames.insert(0x2e, "3-pos switch");
+    spriteNames.insert(0x3a, "Donkey Kong (Klaptraps)");
+    spriteNames.insert(0x44, "Donkey Kong (Lvl 0-2)");
+    spriteNames.insert(0x47, "Crushing stone");
+    spriteNames.insert(0x48, "Octopus");
+    spriteNames.insert(0x4d, "Squid");
+    spriteNames.insert(0x4e, "Fish");
+    spriteNames.insert(0x4f, "Bat");
+    spriteNames.insert(0x50, "Walrus");
+    spriteNames.insert(0x54, "Board");
+    spriteNames.insert(0x57, "Hammer");
+    spriteNames.insert(0x58, "Skull");
+    spriteNames.insert(0x5a, "Hermit crab");
+    spriteNames.insert(0x5c, "Oil drum flames");
+    spriteNames.insert(0x5e, "Donkey Kong (fireballs)");
+    spriteNames.insert(0x64, "Enemy");
+    spriteNames.insert(0x6e, "Donkey Kong (barrels)");
+    spriteNames.insert(0x70, "Elevator up");
+    spriteNames.insert(0x72, "Elevator down");
+    spriteNames.insert(0x7a, "Giant DK");
+    spriteNames.insert(0x7c, "Flame");
+    spriteNames.insert(0x7f, "Mario");
+    spriteNames.insert(0x80, "Wall-walking friend");
+    spriteNames.insert(0x84, "Floating platform");
+    spriteNames.insert(0x86, "Walking enemy");
+    spriteNames.insert(0x88, "Knight");
+    spriteNames.insert(0x8a, "Donkey Kong (Egyptian/rock guys)");
+    spriteNames.insert(0x8e, "Wind");
+    spriteNames.insert(0x90, "Donkey Kong (spring)");
+    spriteNames.insert(0x92, "Donkey Kong (barrels left/right)");
+    spriteNames.insert(0x94, "Climbable monkey");
+    spriteNames.insert(0x96, "Falling icicle");
+    spriteNames.insert(0x98, "Wall-walking enemy");
+    spriteNames.insert(0x9a, "Donkey Kong (avalanche)");
+    spriteNames.insert(0x9d, "Fruit");
+    spriteNames.insert(0xa2, "Frog");
+    spriteNames.insert(0xa4, "Donkey Kong (boulders)");
+    spriteNames.insert(0xa6, "Donkey Kong (switch)");
+    spriteNames.insert(0xa8, "DK Junior (mushrooms/screen edge)");
+    spriteNames.insert(0xaa, "Donkey Kong (mushrooms)");
+    spriteNames.insert(0xac, "Trash can enemy");
+    spriteNames.insert(0xae, "Trash can");
+    spriteNames.insert(0xb0, "Walking block");
+    spriteNames.insert(0xb6, "Klaptrap");
+    spriteNames.insert(0xb8, "Key");
+    spriteNames.insert(0xba, "Oil can");
+    spriteNames.insert(0xbe, "Donkey Kong (pick-up barrels)");
+    spriteNames.insert(0xc0, "Panser");
+    spriteNames.insert(0xc2, "Pauline");
+    spriteNames.insert(0xc6, "DK Junior (switch)");
+    spriteNames.insert(0xc8, "Sleeping monkey");
+    spriteNames.insert(0xca, "DK Junior (mushrooms)");
+    spriteNames.insert(0xcc, "Donkey Kong (pick-up barrels)");
 }
 
 void QDKEdit::saveLevel()

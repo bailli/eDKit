@@ -115,7 +115,8 @@ public:
     bool loadAllLevels(QString romFile);
     bool saveAllLevels(QString romFile);
     QString getLevelInfo();
-    QString spriteNumToString(int sprite);
+    void fillSpriteNames();
+    void fillTileNames();
 
 private:
     void paintLevel(QPainter *painter);

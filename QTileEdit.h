@@ -2,6 +2,7 @@
 #define QTILEEDIT_H
 
 #include <QWidget>
+#include <QMap>
 
 class QTileSelector;
 
@@ -34,6 +35,9 @@ public:
     void setBackground(QImage backgroundImage);
     int getSelectedSprite(int *id);
 
+    QString spriteNumToString(int sprite);
+    QString tileNumToString(int tile);
+
     void getMouse(bool enable);
 
     void setupTileSelector(QTileSelector *tileSelector, float scale = 1.25f, int limitTileCount = 0);
@@ -57,6 +61,9 @@ protected:
     int getTile(int offset);
     void setTile(int x, int y, int tileNumber);
     void setTile(int offset, int tileNumber);
+
+    QMap<int, QString> spriteNames;
+    QMap<int, QString> tileNames;
 
     QVector<QSprite> sprites;
     QByteArray lvlData;
