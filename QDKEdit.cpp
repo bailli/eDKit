@@ -264,30 +264,6 @@ bool QDKEdit::loadAllLevels(QString romFile)
 
     romLoaded = allOkay;
 
-    bool found;
-    int tile, level, pos;
-    for (tile = 0; tile < 0x100; tile++)
-    {
-        found = false;
-        for (level = 0; level < LAST_LEVEL; level++)
-        {
-            for (pos = 0; pos < levels[level].rawTilemap.size(); pos++)
-            {
-                if ((quint8)levels[level].rawTilemap[pos] == (quint8)tile)
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if (found)
-                break;
-        }
-        if (found)
-            qDebug() << QString("Tile 0x%1: Level %2: %3x%4").arg(tile, 2, 16, QChar('0')).arg(level).arg(pos % 0x20).arg(pos / 0x20);
-        else
-            qDebug() << QString("Tile 0x%1: not found").arg(tile, 2, 16, QChar('0'));
-    }
-
     return allOkay;
 }
 
