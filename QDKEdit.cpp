@@ -869,7 +869,7 @@ void QDKEdit::checkForLargeTile(int x, int y, int drawnTile)
 
     int i = y * levelDimension.width() + x;
 
-    if ((int)lvlData[i*2] == emptyTile)
+    if ((x < 0) || (y < 0) || (i*2 >= lvlData.size()) || ((int)lvlData[i*2] == emptyTile))
         return;
 
     if (tiles[tileToDraw].count > 1)
@@ -2429,6 +2429,9 @@ void QDKEdit::mouseMoveEvent(QMouseEvent *e)
         QTileEdit::mouseMoveEvent(e);
         return;
     }
+
+    if ((e->x()+1 > scaledSize.width()) || (e->x() < 0) || (e->y()+1 > scaledSize.height()) || (e->y() < 0))
+        return;
 
     // check for specific tiles and sprites
     // tiles

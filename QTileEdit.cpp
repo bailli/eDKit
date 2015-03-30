@@ -97,20 +97,31 @@ int QTileEdit::getTile(int x, int y)
 
 int QTileEdit::getTile(int offset)
 {
-    if (!lvlData.size())
+    if (!lvlData.size() || (offset < 0))
         return -1;
 
     int tileNumber;
     if (tileDataIs16bit)
+    {
+        if (lvlDataStart+offset*2 >= lvlData.size())
+            return -1;
         tileNumber =  (unsigned char)lvlData[lvlDataStart+offset*2] + (unsigned char)lvlData[lvlDataStart+2*offset+1]*0x100;
+    }
     else
+    {
+        if (lvlDataStart+offset >= lvlData.size())
+            return -1;
         tileNumber = (unsigned char)lvlData[lvlDataStart+offset];
+    }
     return tileNumber;
 
 }
 
 void QTileEdit::setTile(int x, int y, int tileNumber)
 {
+    if ((x < 0) || (y <  0))
+        return;
+
     setTile(y*levelDimension.width()+x, tileNumber);
 }
 
@@ -118,11 +129,17 @@ void QTileEdit::setTile(int offset, int tileNumber)
 {
     if (tileDataIs16bit)
     {
+        if (lvlDataStart+offset*2+1 >= lvlData.size())
+            return;
         lvlData[lvlDataStart + offset * 2] = tileNumber % 0x100;
         lvlData[lvlDataStart + offset * 2 + 1] = tileNumber / 0x100;
     }
     else
+    {
+        if (lvlDataStart+offset >= lvlData.size())
+            return;
         lvlData[lvlDataStart + offset] = (unsigned char)tileNumber;
+    }
 }
 
 
@@ -307,6 +324,9 @@ void QTileEdit::resizeEvent(QResizeEvent *e)
 
 void QTileEdit::mouseMoveEvent(QMouseEvent *e)
 {
+    if ((e->x()+1 > scaledSize.width()) || (e->x() < 0) || (e->y()+1 > scaledSize.height()) || (e->y() < 0))
+        return;
+
     if (!spriteMode)
     {
         //check if selection rect has moved
