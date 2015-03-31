@@ -407,6 +407,7 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
     if (levels[id].addSpriteData)
     {
+        levels[id].switches.clear();
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i+=4)
         {
             byte = (quint8)levels[id].rawAddSpriteData[i];
@@ -738,7 +739,7 @@ bool QDKEdit::recompressLevel(quint8 id)
         {
             count = 0;
 
-            while (((quint8)lvl->rawSwitchData[i] == (quint8)0x00) && (count <= 0x7F) && (i < lvl->rawSwitchData.size()))
+            while (((quint8)lvl->rawSwitchData[i] == (quint8)0x00) && (count < 0x7F) && (i < lvl->rawSwitchData.size()))
             {
                 count++;
                 i++;
@@ -747,12 +748,12 @@ bool QDKEdit::recompressLevel(quint8 id)
             if (count != 0)
             {
                 lvl->fullData.append(count);
-
+                count = 0;
                 i--;
                 continue;
             }
 
-            while (((quint8)lvl->rawSwitchData[i] != (quint8)0x00) && (count <= 0x80) && (i < lvl->rawSwitchData.size()))
+            while (((quint8)lvl->rawSwitchData[i] != (quint8)0x00) && (count < 0x7F) && (i < lvl->rawSwitchData.size()))
             {
                 count++;
                 i++;
@@ -766,10 +767,13 @@ bool QDKEdit::recompressLevel(quint8 id)
 
                 for (int j = 0; j < count; j++)
                     lvl->fullData.append((quint8)lvl->rawSwitchData[i-count+1+j]);
+
+                count = 0;
             }
 
         }
-
+        if (count != 0)
+            qWarning() << QString("Level %1: recompressing switch data; count == %2").arg(id).arg(count);
     }
 
 
@@ -785,7 +789,7 @@ bool QDKEdit::recompressLevel(quint8 id)
         {
             count = 0;
 
-            while (((quint8)lvl->rawAddSpriteData[i] == (quint8)0x00) && (count <= 0x7F) && (i < lvl->rawAddSpriteData.size()))
+            while (((quint8)lvl->rawAddSpriteData[i] == (quint8)0x00) && (count < 0x7F) && (i < lvl->rawAddSpriteData.size()))
             {
                 count++;
                 i++;
@@ -794,12 +798,12 @@ bool QDKEdit::recompressLevel(quint8 id)
             if (count != 0)
             {
                 lvl->fullData.append(count);
-
+                count = 0;
                 i--;
                 continue;
             }
 
-            while (((quint8)lvl->rawAddSpriteData[i] != (quint8)0x00) && (count <= 0x80) && (i < lvl->rawAddSpriteData.size()))
+            while (((quint8)lvl->rawAddSpriteData[i] != (quint8)0x00) && (count < 0x7F) && (i < lvl->rawAddSpriteData.size()))
             {
                 count++;
                 i++;
@@ -813,9 +817,12 @@ bool QDKEdit::recompressLevel(quint8 id)
 
                 for (int j = 0; j < count; j++)
                     lvl->fullData.append((quint8)lvl->rawAddSpriteData[i-count+1+j]);
-            }
 
+                count = 0;
+            }
         }
+        if (count != 0)
+            qWarning() << QString("Level %1: recompressing sprite flag; count == %2").arg(id).arg(count);
     }
 
     // compress tilemap
