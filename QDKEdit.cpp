@@ -407,7 +407,6 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
     if (levels[id].addSpriteData)
     {
-        levels[id].switches.clear();
         for (int i = 0; i < levels[id].rawAddSpriteData.size(); i+=4)
         {
             byte = (quint8)levels[id].rawAddSpriteData[i];
@@ -469,6 +468,10 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         }
     }
 
+    for (int t = 0; t < levels[id].switches.size(); t++)
+        levels[id].switches[t].connectedTo.clear();
+
+    levels[id].switches.clear();
     if (levels[id].switchData)
     {
         for (int i = 8; i > 0; i--)
@@ -1891,7 +1894,7 @@ void QDKEdit::fillTileNames()
     tileNames.insert(0x23, "structure support (0-4)");
     tileNames.insert(0x24, "elevator bottom - unused");
     tileNames.insert(0x25, "mushroom - do not use");
-    tileNames.insert(0x26, "spikes");
+    tileNames.insert(0x26, "spikes #2");
     tileNames.insert(0x27, "ground");
     tileNames.insert(0x28, "ground off-center");
     tileNames.insert(0x29, "shutter");
@@ -1990,7 +1993,7 @@ void QDKEdit::fillTileNames()
     tileNames.insert(0x86, "sprite (enemy)");
     tileNames.insert(0x87, "ground off-center");
     tileNames.insert(0x88, "sprite (knight)");
-    tileNames.insert(0x89, "ground off-center");
+    tileNames.insert(0x89, "ground off-center+ladder");
     tileNames.insert(0x8a, "sprite (DK)");
     tileNames.insert(0x8b, "ground off-center+ladder");
     tileNames.insert(0x8c, "X-tile");
@@ -2038,7 +2041,7 @@ void QDKEdit::fillTileNames()
     tileNames.insert(0xb6, "sprite (klaptrap)");
     tileNames.insert(0xb7, "ground off-center");
     tileNames.insert(0xb8, "sprite (key)");
-    tileNames.insert(0xb9, "bird's nest");
+    tileNames.insert(0xb9, "bird's nest (switchable)");
     tileNames.insert(0xba, "sprite (oil can)");
     tileNames.insert(0xbb, "expanding ground");
     tileNames.insert(0xbc, "expanding ladder");
@@ -2912,4 +2915,83 @@ void QDKEdit::paintLevel(QPainter *painter)
     // redraw selection since it might get covered
     painter->setPen(Qt::gray);
     painter->drawRect(mouseOverTile.x(), mouseOverTile.y(), mouseOverTile.width(), mouseOverTile.height());
+}
+
+QPixmap *QDKEdit::getTilePixmap(int num)
+{
+    if (num > 255)
+        return NULL;
+
+    QPainter painter;
+
+    QPixmap *pix = new QPixmap(tiles[num].w * tileSize.width(), tiles[num].h * tileSize.height());
+    pix->fill(Qt::white);
+    painter.begin(pix);
+    painter.fillRect(pix->rect(), Qt::white);
+    int tile;
+
+    for (int i = 0; i < tiles[num].h; i++)
+        for (int j = 0; j < tiles[num].w; j++)
+        {
+            if ((i == 0) && (j == 0))
+                tile = num;
+            else
+                tile = 0x100 + tiles[num].additionalTilesAt - 1 + j + (i * tiles[num].w);
+            painter.drawPixmap(QRect(j*tileSize.width(), i*tileSize.height(), tileSize.width(), tileSize.height()), tileSet, tileNumberToQRect(tile));
+        }
+
+    painter.end();
+
+    return pix;
+}
+
+void QDKEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int limitTileCount)
+{
+    QTileEdit::setupTileSelector(tileSelector, scale, limitTileCount);
+
+    QTileGroups groups;
+    QVector<int> group;
+    group << 0x9e << 0x79 << 0x7d << 0x51<< 0x53 << 0x65 << 0xaf << 0x4b << 0xab << 0x45 << 0xb1 << 0x75 << 0x77 << 0xbb << 0xbc << 0xc4;
+    groups.insert("Collectables & exits:", group);
+    group.clear();
+    //group << 0x36 << 0x31 << 0x32 << 0x33  << 0x35 << 0xad << 0x37 << 0x42;
+    //groups.insert("Water:", group);
+    //group.clear();
+    group << 0x09 << 0x0a << 0x34 << 0x21 << 0x22 << 0x0c << 0x0d << 0x0e << 0x0f << 0x10 << 0x11 << 0x12 << 0x13 << 0x14 << 0x15 << 0x16 << 0x17 << 0x1b << 0x70 << 0x71 << 0x72 << 0x73 << 0x7b;
+    groups.insert("Moving stuff:", group);
+    group.clear();
+    group << 0x07 << 0x2c << 0x49 << 0x08 << 0x30 << 0x2f << 0x4a << 0x1d << 0x1e << 0x1f << 0x61 << 0x63 << 0xa5 << 0xa7;
+    groups.insert("Climbable stuff:", group);
+    group.clear();
+    group << 0x1a << 0x2e << 0x20 << 0x18 << 0x5d << 0x40 << 0x41 << 0x67 << 0xb9 << 0xa9 << 0x68 << 0x6a << 0x6b << 0x6d << 0x6c << 0x69 << 0xb2 << 0xb3 << 0xb4 << 0xb5;
+    groups.insert("Other objects:", group);
+    group.clear();
+    //group << 0x05 << 0x26 << 0x2b << 0x04 << 0x2d << 0x43 << 0x29 << 0x2a << 0x56 << 0x23;
+    //groups.insert("Special ground blocks", group);
+    //group.clear();
+    group << 0x03 << 0x00 << 0x01 << 0x02 << 0x06 << 0x0b << 0x1c << 0x27 << 0xfd << 0x4c << 0x52 << 0x55 << 0x6f;
+    group << 0x05 << 0x26 << 0x2b << 0x04 << 0x2d << 0x43 << 0x29 << 0x2a << 0x56 << 0x23;
+    group << 0x36 << 0x31 << 0x32 << 0x33  << 0x35 << 0xad << 0x37 << 0x42;
+    groups.insert("Ground & water blocks:", group);
+    group.clear();
+    group << 0x81 << 0x3b << 0x83 << 0x28 << 0x85 << 0xb7 << 0x87;
+    group << 0xc5 << 0x89 << 0xc7 << 0x99 << 0xc9 << 0x9b << 0xcb << 0x59 << 0x97 << 0x9f << 0x8b << 0xa1 << 0x8d << 0xa3;
+    group << 0x8f << 0x5f << 0x91 << 0xc1 << 0x93 << 0xc3 << 0x95;
+    groups.insert("Off-center ground blocks:", group);
+    group.clear();
+    group << 0xcd << 0xce << 0xcf << 0xd0 << 0xd1 << 0xd2 << 0xd3 << 0xd4 << 0xd5 << 0xd6 << 0xd7 << 0xd8 << 0xd9 << 0xda << 0xdb << 0xdc << 0xdd << 0xde << 0xdf << 0xe0 << 0xe1 << 0xe2 << 0xe3 << 0xe4 << 0xe5 << 0xe6 << 0xe7 <<  0xe8 << 0xe9 << 0xea <<  0xeb << 0xec << 0xed << 0xee << 0xef << 0xf0 << 0xf1 << 0xf2 << 0xf3 << 0xf4 << 0xf5 << 0xf6 << 0xf7 <<  0xf8 << 0xf9 <<  0xfa << 0xfb << 0xfc;
+    groups.insert("Background tiles:", group);
+
+    QSpacings space;
+    space.top = 2;
+    space.bottom = 5;
+    space.left = 0;
+    space.right = 0;
+    space.vSpace = 3;
+    space.hSpace = 3;
+    space.beforeText = 5;
+    space.afterText = 2;
+
+    tileSelector->setTilePixSrc(this);
+    tileSelector->groupTiles(groups, space);
 }

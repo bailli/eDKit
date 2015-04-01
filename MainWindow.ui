@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>829</width>
-    <height>691</height>
+    <width>860</width>
+    <height>655</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>eDKit alpha (c) 2014 by bailli</string>
+   <string>eDKit alpha (c) 2014-15 by bailli</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QDKEdit" name="lvlEdit" native="true">
@@ -28,26 +28,13 @@
     <property name="geometry">
      <rect>
       <x>9</x>
-      <y>464</y>
-      <width>321</width>
-      <height>201</height>
+      <y>470</y>
+      <width>411</width>
+      <height>151</height>
      </rect>
     </property>
     <property name="plainText">
      <string/>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="btnWrite">
-    <property name="geometry">
-     <rect>
-      <x>620</x>
-      <y>550</y>
-      <width>101</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Save level data</string>
     </property>
    </widget>
    <widget class="QTabWidget" name="tabWidget">
@@ -55,15 +42,15 @@
      <rect>
       <x>530</x>
       <y>10</y>
-      <width>281</width>
-      <height>301</height>
+      <width>321</width>
+      <height>451</height>
      </rect>
     </property>
     <property name="tabShape">
      <enum>QTabWidget::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>0</number>
     </property>
     <property name="elideMode">
      <enum>Qt::ElideNone</enum>
@@ -75,10 +62,10 @@
      <widget class="QTileSelector" name="tileSelect" native="true">
       <property name="geometry">
        <rect>
-        <x>9</x>
-        <y>8</y>
-        <width>256</width>
-        <height>256</height>
+        <x>7</x>
+        <y>18</y>
+        <width>301</width>
+        <height>386</height>
        </rect>
       </property>
      </widget>
@@ -90,9 +77,9 @@
      <widget class="QCheckBox" name="ckbTransparency">
       <property name="geometry">
        <rect>
-        <x>130</x>
-        <y>240</y>
-        <width>131</width>
+        <x>157</x>
+        <y>218</y>
+        <width>150</width>
         <height>21</height>
        </rect>
       </property>
@@ -108,8 +95,8 @@
        <rect>
         <x>8</x>
         <y>10</y>
-        <width>256</width>
-        <height>220</height>
+        <width>301</width>
+        <height>201</height>
        </rect>
       </property>
       <property name="defaultDropAction">
@@ -119,14 +106,14 @@
      <widget class="QToolButton" name="toolButton">
       <property name="geometry">
        <rect>
-        <x>10</x>
-        <y>239</y>
-        <width>111</width>
+        <x>8</x>
+        <y>217</y>
+        <width>126</width>
         <height>24</height>
        </rect>
       </property>
       <property name="text">
-       <string>New Sprite</string>
+       <string>Add new sprite</string>
       </property>
       <property name="popupMode">
        <enum>QToolButton::InstantPopup</enum>
@@ -138,6 +125,205 @@
        <enum>Qt::NoArrow</enum>
       </property>
      </widget>
+     <widget class="QGroupBox" name="grpSpriteProp">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>8</x>
+        <y>250</y>
+        <width>289</width>
+        <height>161</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Sprite properties</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="lblDirection">
+         <property name="text">
+          <string>Direction</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="btnFlip">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Flip/Speed</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>42</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_9">
+         <property name="text">
+          <string>Walking Speed</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="spbSpeed">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="maximum">
+          <number>127</number>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>42</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Elevator Speed/Time</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1" colspan="2">
+        <widget class="QComboBox" name="cmbElevator">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <item>
+          <property name="text">
+           <string>Speed 1; Time 1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 2; Time 1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 3; Time 1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 4; Time 1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 1; Time 2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 2; Time 2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 3; Time 2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 4; Time 2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 1; Time 3</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 2; Time 3</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 3; Time 3</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 4; Time 3</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 1; Time 4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 2; Time 4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 3; Time 4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Speed 4; Time 4</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_11">
+         <property name="text">
+          <string>RAW data</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="spbRAW">
+         <property name="maximum">
+          <number>255</number>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>42</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
     <widget class="QWidget" name="tabSwitches">
      <attribute name="title">
@@ -146,10 +332,10 @@
      <widget class="QTreeWidget" name="treSwitches">
       <property name="geometry">
        <rect>
-        <x>10</x>
+        <x>8</x>
         <y>10</y>
-        <width>256</width>
-        <height>251</height>
+        <width>301</width>
+        <height>401</height>
        </rect>
       </property>
       <property name="headerHidden">
@@ -169,10 +355,10 @@
    <widget class="QGroupBox" name="groupBox">
     <property name="geometry">
      <rect>
-      <x>530</x>
-      <y>320</y>
-      <width>281</width>
-      <height>221</height>
+      <x>430</x>
+      <y>470</y>
+      <width>422</width>
+      <height>161</height>
      </rect>
     </property>
     <property name="title">
@@ -196,10 +382,30 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="2">
+      <spacer name="horizontalSpacer_6">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>115</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="3" colspan="2">
+      <widget class="QPushButton" name="btnWrite">
+       <property name="text">
+        <string>Save level data</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Size:</string>
+        <string>Size</string>
        </property>
       </widget>
      </item>
@@ -232,10 +438,37 @@
        </item>
       </widget>
      </item>
+     <item row="1" column="3">
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>29</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="1" column="4">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Time (sec)</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="5">
+      <widget class="QSpinBox" name="spbTime">
+       <property name="maximum">
+        <number>999</number>
+       </property>
+      </widget>
+     </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>Music:</string>
+        <string>Music</string>
        </property>
       </widget>
      </item>
@@ -426,10 +659,40 @@
        </item>
       </widget>
      </item>
+     <item row="2" column="3">
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>29</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="2" column="4">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Palette</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="5">
+      <widget class="QSpinBox" name="spbPalette">
+       <property name="minimum">
+        <number>384</number>
+       </property>
+       <property name="maximum">
+        <number>511</number>
+       </property>
+      </widget>
+     </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Tileset:</string>
+        <string>Tileset</string>
        </property>
       </widget>
      </item>
@@ -607,213 +870,21 @@
        </item>
       </widget>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>Time:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QSpinBox" name="spbTime">
-       <property name="maximum">
-        <number>999</number>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="2">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>sec</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>Palette</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QSpinBox" name="spbPalette">
-       <property name="minimum">
-        <number>384</number>
-       </property>
-       <property name="maximum">
-        <number>511</number>
-       </property>
-      </widget>
-     </item>
     </layout>
    </widget>
-   <widget class="QGroupBox" name="grpSpriteProp">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>340</x>
-      <y>463</y>
-      <width>181</width>
-      <height>191</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Sprite properties</string>
-    </property>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="lblDirection">
-       <property name="text">
-        <string>Direction</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1" colspan="2">
-      <widget class="QPushButton" name="btnFlip">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Flip/Speed</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0" colspan="2">
-      <widget class="QLabel" name="label_9">
-       <property name="text">
-        <string>Walking Speed</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QSpinBox" name="spbSpeed">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="maximum">
-        <number>127</number>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0" colspan="3">
-      <widget class="QLabel" name="label_10">
-       <property name="text">
-        <string>Elevator Speed/Time</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0" colspan="3">
-      <widget class="QComboBox" name="cmbElevator">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <item>
-        <property name="text">
-         <string>Speed 1; Time 1</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 2; Time 1</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 3; Time 1</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 4; Time 1</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 1; Time 2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 2; Time 2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 3; Time 2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 4; Time 2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 1; Time 3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 2; Time 3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 3; Time 3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 4; Time 3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 1; Time 4</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 2; Time 4</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 3; Time 4</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Speed 4; Time 4</string>
-        </property>
-       </item>
-      </widget>
-     </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_11">
-       <property name="text">
-        <string>RAW data</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="2">
-      <widget class="QSpinBox" name="spbRAW">
-       <property name="maximum">
-        <number>255</number>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
+   <zorder>lvlEdit</zorder>
+   <zorder>lvlInfo</zorder>
+   <zorder>tabWidget</zorder>
+   <zorder>groupBox</zorder>
+   <zorder>spbLevel</zorder>
+   <zorder>label</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>829</width>
+     <width>860</width>
      <height>20</height>
     </rect>
    </property>
@@ -860,8 +931,4 @@
  </customwidgets>
  <resources/>
  <connections/>
- <buttongroups>
-  <buttongroup name="bgrLeverPos"/>
-  <buttongroup name="bgrObjectType"/>
- </buttongroups>
 </ui>

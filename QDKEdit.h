@@ -117,6 +117,7 @@ public:
     QString getLevelInfo();
     void fillSpriteNames();
     void fillTileNames();
+    void setupTileSelector(QTileSelector *tileSelector, float scale, int limitTileCount);
 
 private:
     void paintLevel(QPainter *painter);
@@ -198,6 +199,7 @@ public slots:
     void selectSwitch(int num);
     void deleteSwitchObj(int num);
     void deleteCurrentSwitch();
+    QPixmap *getTilePixmap(int num);
 };
 
 #endif // QDKEDIT_H
