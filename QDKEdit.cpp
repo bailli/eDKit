@@ -195,6 +195,54 @@ bool QDKEdit::saveAllLevels(QString romFile)
     rom.seek(COMPARE_POS_2);
     out << rombankLimit[1];
 
+    // fix checksum
+    rom.seek(0);
+    quint16 chksum = 0;
+    quint16 orgChksum;
+    quint8 headerchksum = 0;
+    quint8 orgHeader = 0;
+    quint8 byte;
+    for (quint32 i = 0; i < rom.size(); i++)
+    {
+        out >> byte;
+        if (i < 0x0134)
+                chksum += (quint16)byte;
+        else if (i < 0x014D)
+        {
+            chksum += (quint16)byte;
+            headerchksum += byte;
+        }
+        else if (i == 0x014D)
+            orgHeader = byte;
+        else if (i == 0x014E)
+            orgChksum = (((quint16)byte) << 8);
+        else if (i == 0x014F)
+            orgChksum |= (quint16)byte;
+        else
+            chksum += (quint16)byte;
+    }
+
+    headerchksum = (quint8)(0xE7 - headerchksum);
+    if (headerchksum != orgHeader)
+    {
+        rom.seek(0x014D);
+        out << headerchksum;
+        qWarning() << QString("Header checksum was incorrect (0x%1 -> 0x%2)! Are you using a corrupted ROM?!").arg(orgChksum, 4, 16, QChar('0')).arg(headerchksum, 4, 16, QChar('0'));
+    }
+    chksum += (quint16)headerchksum;
+    if (chksum != orgChksum)
+    {
+        rom.seek(0x014E);
+        out.setByteOrder(QDataStream::BigEndian);
+        out << chksum;
+        out.setByteOrder(QDataStream::LittleEndian);
+    }
+
+    /*qDebug() << QString("Header checksum: 0x%1").arg(orgHeader, 2, 16, QChar('0'));
+    qDebug() << QString("Calc header: 0x%1").arg(headerchksum, 2, 16, QChar('0'));
+    qDebug() << QString("Global checksum: 0x%1").arg(orgChksum, 4, 16, QChar('0'));
+    qDebug() << QString("Calc global: 0x%1").arg(chksum, 4, 16, QChar('0'));*/
+
     rom.close();
 
     return true;
