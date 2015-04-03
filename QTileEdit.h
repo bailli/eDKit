@@ -113,6 +113,7 @@ signals:
 public slots:
     void updateLevel();
     void keepUndoData();
+    virtual void clearLevel();
     void setTileToDraw(int tileNumber);
     void toggleSpriteMode(bool enabled);
     void toggleSpriteMode(int enabled);

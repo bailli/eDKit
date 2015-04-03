@@ -444,8 +444,8 @@ void QTileEdit::mousePressEvent(QMouseEvent *e)
 {
     if (e->type() == QEvent::MouseButtonPress)
     {
-        mousePressed = true;
         createUndoData();
+        mousePressed = true;
     }
 
     if (!spriteMode)
@@ -549,6 +549,7 @@ int QTileEdit::getSpriteAtXY(int x, int y, QRect *spriteRect = NULL)
 void QTileEdit::mouseReleaseEvent(QMouseEvent *)
 {
     mousePressed = false;
+
     if (!keepUndo)
         deleteLastUndo();
 }
@@ -732,6 +733,7 @@ void QTileEdit::undo()
         sprites.append(undoSprites.at(i));
         emit spriteAdded(spriteNumToString(undoSprites.at(i).id), undoSprites.at(i).id);
     }
+    undoSprites.clear();
 
     spriteSelection = QRect();
 
@@ -758,4 +760,31 @@ void QTileEdit::deleteLastUndo()
         undoData.first.clear();
         undoData.second.clear();
     }
+}
+void QTileEdit::clearLevel()
+{
+    createUndoData();
+
+    if (tileDataIs16bit)
+    {
+        for (int i = 0; i < lvlData.size(); i+=2)
+        {
+            lvlData[i] = (quint8)(emptyTile % 0x100);
+            lvlData[i+1] = (quint8)(emptyTile / 0x100);
+        }
+    }
+    else
+        lvlData.fill(emptyTile);
+
+    for (int i = sprites.size()-1; i >= 0; i--)
+        emit spriteRemoved(i);
+
+    sprites.clear();
+    spriteSelection = QRect();
+    spriteToMove = -1;
+
+    dataIsChanged = true;
+    emit dataChanged();
+
+    update();
 }

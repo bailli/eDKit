@@ -3073,7 +3073,10 @@ void QDKEdit::undo()
     {
         currentSwitches.append(undoSw.at(i));
         emit switchAdded(&currentSwitches[i]);
-    }
+        undoSw[i].connectedTo.clear();
+    }    
+    undoSw.clear();
+
     update();
 }
 
@@ -3113,4 +3116,17 @@ void QDKEdit::clearUndoData()
             undoSw[i].connectedTo.clear();
         undoSw.clear();
     }
+}
+
+
+void QDKEdit::clearLevel()
+{
+    for (int i = currentSwitches.size()-1; i >= 0; i--)
+    {
+        currentSwitches[i].connectedTo.clear();
+        emit switchRemoved(i);
+    }
+    currentSwitches.clear();
+
+    QTileEdit::clearLevel();
 }

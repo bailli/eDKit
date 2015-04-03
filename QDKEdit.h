@@ -198,6 +198,8 @@ public slots:
     void changeSpriteTransparency(bool transparent);
     void addSprite(int id);
 
+    void clearLevel();
+
     void toggleSwitchMode(bool enabled);
     void toggleSwitchMode(int enabled);
 

@@ -397,6 +397,9 @@
      </item>
      <item row="0" column="3" colspan="2">
       <widget class="QPushButton" name="btnWrite">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>Save level data</string>
        </property>
@@ -872,12 +875,6 @@
      </item>
     </layout>
    </widget>
-   <zorder>lvlEdit</zorder>
-   <zorder>lvlInfo</zorder>
-   <zorder>tabWidget</zorder>
-   <zorder>groupBox</zorder>
-   <zorder>spbLevel</zorder>
-   <zorder>label</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -898,7 +895,15 @@
     <addaction name="actionOpen_ROM"/>
     <addaction name="actionSave_ROM"/>
    </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <addaction name="actionUndo"/>
+    <addaction name="actionEmpty_Level"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
   </widget>
   <action name="actionOpen_ROM">
    <property name="text">
@@ -911,6 +916,16 @@
   <action name="actionSave_ROM">
    <property name="text">
     <string>&amp;Save ROM</string>
+   </property>
+  </action>
+  <action name="actionUndo">
+   <property name="text">
+    <string>&amp;Undo</string>
+   </property>
+  </action>
+  <action name="actionEmpty_Level">
+   <property name="text">
+    <string>&amp;Clear Level</string>
    </property>
   </action>
  </widget>

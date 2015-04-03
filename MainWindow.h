@@ -32,6 +32,7 @@ private slots:
     void changeLevel(int id);
     void loadROM();
     void SaveROM();
+    void enableSaveBtn();
     void selectSprite(int num);
     void addSprite(QString text, int id);
     void removeSelectedSprite();

@@ -18,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->actionOpen_ROM->setShortcut(QKeySequence::Open);
     ui->actionSave_ROM->setShortcut(QKeySequence::Save);
+    ui->actionUndo->setShortcut(Qt::CTRL + Qt::Key_U);
 
     connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(updateText()));
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), ui->lvlEdit, SLOT(toggleSpriteMode(int)));
@@ -25,12 +26,15 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->btnWrite, SIGNAL(clicked()), ui->lvlEdit, SLOT(saveLevel()));
     connect(ui->actionOpen_ROM, SIGNAL(triggered()), this, SLOT(loadROM()));
     connect(ui->actionSave_ROM, SIGNAL(triggered()), this, SLOT(SaveROM()));
+    connect(ui->actionUndo, SIGNAL(triggered()), ui->lvlEdit, SLOT(undo()));
+    connect(ui->actionEmpty_Level, SIGNAL(triggered()), ui->lvlEdit, SLOT(clearLevel()));
 
     connect(ui->lvlEdit, SIGNAL(musicChanged(int)), ui->cmbMusic, SLOT(setCurrentIndex(int)));
     connect(ui->lvlEdit, SIGNAL(paletteChanged(int)), ui->spbPalette, SLOT(setValue(int)));
     connect(ui->lvlEdit, SIGNAL(sizeChanged(int)), ui->cmbSize, SLOT(setCurrentIndex(int)));
     connect(ui->lvlEdit, SIGNAL(tilesetChanged(int)), ui->cmbTileset, SLOT(setCurrentIndex(int)));
     connect(ui->lvlEdit, SIGNAL(timeChanged(int)), ui->spbTime, SLOT(setValue(int)));
+    connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(enableSaveBtn()));
 
     //connect(ui->spbLevel, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeLevel(int)));
     connect(ui->spbLevel, SIGNAL(valueChanged(int)), this, SLOT(changeLevel(int)));
@@ -112,8 +116,10 @@ MainWindow::MainWindow(QWidget *parent) :
     QShortcut* scSwitches = new QShortcut(QKeySequence(Qt::Key_Delete), ui->treSwitches);
     connect(scSwitches, SIGNAL(activated()), this, SLOT(delSwitchItem()));
 
-    QShortcut* scUndo = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_U), ui->lvlEdit);
-    connect(scUndo, SIGNAL(activated()), ui->lvlEdit, SLOT(undo()));
+    //QShortcut* scUndo = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_U), ui->lvlEdit);
+    //connect(scUndo, SIGNAL(activated()), ui->lvlEdit, SLOT(undo()));
+
+    changeLevel(0);
 }
 
 void MainWindow::tabsSwitched(int index)
@@ -253,6 +259,7 @@ void MainWindow::changeLevel(int id)
             qWarning() << "Unexpected return value form messagebox!";
     }
     ui->lvlEdit->changeLevel(id);
+    ui->btnWrite->setEnabled(false);
 }
 
 void MainWindow::updateText()
@@ -503,4 +510,9 @@ void MainWindow::delSwitchItem()
         ui->lvlEdit->deleteCurrentSwitch();
     else
         ui->lvlEdit->deleteSwitchObj(item->parent()->indexOfChild(item));
+}
+
+void MainWindow::enableSaveBtn()
+{
+    ui->btnWrite->setEnabled(true);
 }
