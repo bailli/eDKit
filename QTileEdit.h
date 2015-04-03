@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QMap>
+#include <QStack>
 
 class QTileSelector;
 
@@ -65,6 +66,12 @@ protected:
     QMap<int, QString> spriteNames;
     QMap<int, QString> tileNames;
 
+    QStack<QPair<QByteArray, QVector<QSprite> > > undoStack;
+    bool keepUndo;
+    virtual void createUndoData();
+    virtual void clearUndoData();
+    virtual void deleteLastUndo();
+
     QVector<QSprite> sprites;
     QByteArray lvlData;
     int lvlDataStart;
@@ -105,12 +112,14 @@ signals:
 
 public slots:
     void updateLevel();
+    void keepUndoData();
     void setTileToDraw(int tileNumber);
     void toggleSpriteMode(bool enabled);
     void toggleSpriteMode(int enabled);
     void getSpriteFlag(int num, quint8 *flag);
     void setSpriteFlag(int num, quint8 flag);
     void deleteSprite(int num);
+    virtual void undo();
 };
 
 #endif // QTILEEDIT_H

@@ -111,6 +111,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QShortcut* scSwitches = new QShortcut(QKeySequence(Qt::Key_Delete), ui->treSwitches);
     connect(scSwitches, SIGNAL(activated()), this, SLOT(delSwitchItem()));
+
+    QShortcut* scUndo = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_U), ui->lvlEdit);
+    connect(scUndo, SIGNAL(activated()), ui->lvlEdit, SLOT(undo()));
 }
 
 void MainWindow::tabsSwitched(int index)

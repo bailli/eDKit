@@ -227,7 +227,7 @@ bool QDKEdit::saveAllLevels(QString romFile)
     {
         rom.seek(0x014D);
         out << headerchksum;
-        qWarning() << QString("Header checksum was incorrect (0x%1 -> 0x%2)! Are you using a corrupted ROM?!").arg(orgChksum, 4, 16, QChar('0')).arg(headerchksum, 4, 16, QChar('0'));
+        qWarning() << QString("Header checksum was incorrect (0x%1 -> 0x%2)! Are you using a corrupted ROM?!").arg(orgHeader, 4, 16, QChar('0')).arg(headerchksum, 4, 16, QChar('0'));
     }
     chksum += (quint16)headerchksum;
     if (chksum != orgChksum)
@@ -1904,6 +1904,8 @@ void QDKEdit::updateSprite(int num)
 
 void QDKEdit::fillTileNames()
 {
+    //some "ground" tiles aren't solid
+    //special tiles above ladders needed
     tileNames.insert(0x00, "I-tile");
     tileNames.insert(0x01, "ground");
     tileNames.insert(0x02, "ground");
@@ -2270,6 +2272,7 @@ void QDKEdit::changeLevel(int id)
         return;
 
     dataIsChanged = false;
+    clearUndoData();
     currentLevel = id;
     swObjToMove = -1;
     spriteToMove = -1;
@@ -2301,7 +2304,10 @@ void QDKEdit::changeLevel(int id)
         emit spriteRemoved(i);
 
     for (int i = currentSwitches.size()-1; i >= 0; i--)
+    {
+        currentSwitches[i].connectedTo.clear();
         emit switchRemoved(i);
+    }
 
     switchToEdit = -1;
 
@@ -2472,6 +2478,8 @@ void QDKEdit::toggleSwitchMode(bool enabled)
     switchMode = enabled;
     if (enabled)
         spriteMode = true;
+    mouseOverTile = QRect();
+    update();
 }
 
 void QDKEdit::toggleSwitchMode(int enabled)
@@ -2673,22 +2681,6 @@ void QDKEdit::mouseMoveEvent(QMouseEvent *e)
 
     if ((newX != xTile) || (newY != yTile))
     {
-/*        int i;
-        if (switchToEdit < 0)
-        {
-            for (i = 0; i < currentSwitches.size(); i++)
-                if ((currentSwitches.at(i).x == xTile) && (currentSwitches.at(i).y == yTile))
-                    break;
-
-            if (i == currentSwitches.size())
-            {
-                qWarning() << "moved unkown switch?!" << mouseOverTile;
-                return;
-            }
-
-            currentSwitches[i].x = newX;
-            currentSwitches[i].y = newY;
-        }*/
         if (switchToEdit > -1)
         {
             if (switchToEdit >= currentSwitches.size())
@@ -2707,6 +2699,7 @@ void QDKEdit::mouseMoveEvent(QMouseEvent *e)
                         currentSwitches[switchToEdit].x = newX;
                         currentSwitches[switchToEdit].y = newY;
                         mouseOverTile = QRect(newX * tileSize.width(), newY * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
+                        emit dataChanged();
                         dataIsChanged = true;
                         emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
                         update();
@@ -2717,6 +2710,7 @@ void QDKEdit::mouseMoveEvent(QMouseEvent *e)
                     currentSwitches[switchToEdit].connectedTo[swObjToMove].x = newX;
                     currentSwitches[switchToEdit].connectedTo[swObjToMove].y = newY;
                     mouseOverTile = QRect(newX * tileSize.width(), newY * tileSize.height(), tileSize.width()-1, tileSize.height()-1);
+                    emit dataChanged();
                     dataIsChanged = true;
                     emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
                     update();
@@ -2736,7 +2730,10 @@ void QDKEdit::mousePressEvent(QMouseEvent *e)
     }
 
     if (e->type() == QEvent::MouseButtonPress)
+    {
         mousePressed = true;
+        createUndoData();
+    }
 
     if ((e->button() == Qt::LeftButton) || (e->button() == Qt::RightButton) || (e->button() == Qt::MiddleButton))
     {
@@ -2769,6 +2766,7 @@ void QDKEdit::mousePressEvent(QMouseEvent *e)
                     currentSwitches.append(newSwitch);
                     switchToEdit = currentSwitches.size() - 1;
 
+                    emit dataChanged();
                     dataIsChanged = true;
                     emit switchAdded(&currentSwitches[currentSwitches.size()-1]);
                     update();
@@ -2824,6 +2822,7 @@ void QDKEdit::mousePressEvent(QMouseEvent *e)
 
                     currentSwitches[switchToEdit].connectedTo.append(newObj);
                     swObjToMove = currentSwitches[switchToEdit].connectedTo.size() - 1;
+                    emit dataChanged();
                     dataIsChanged = true;
                     emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
                     update();
@@ -2850,6 +2849,7 @@ void QDKEdit::mousePressEvent(QMouseEvent *e)
             {
                 currentSwitches[switchToEdit].connectedTo.clear();
                 currentSwitches.removeAt(switchToEdit);
+                emit dataChanged();
                 dataIsChanged = true;
                 emit switchRemoved(switchToEdit);
                 swObjToMove = -1;
@@ -2859,6 +2859,7 @@ void QDKEdit::mousePressEvent(QMouseEvent *e)
             {
                 currentSwitches[switchToEdit].connectedTo.removeAt(swObjToMove);
                 swObjToMove = -1;
+                emit dataChanged();
                 dataIsChanged = true;
                 emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
             }
@@ -2872,6 +2873,7 @@ void QDKEdit::mousePressEvent(QMouseEvent *e)
         else
             currentSwitches[switchToEdit].state = 0;
 
+        emit dataChanged();
         dataIsChanged = true;
         emit switchUpdated(switchToEdit, &currentSwitches[switchToEdit]);
     }
@@ -3042,4 +3044,73 @@ void QDKEdit::setupTileSelector(QTileSelector *tileSelector, float scale, int li
 
     tileSelector->setTilePixSrc(this);
     tileSelector->groupTiles(groups, space);
+}
+
+void QDKEdit::undo()
+{
+    if (undoStack.size() != undoSwitches.size())
+        qWarning() << "stack sizes differ!!!";
+
+    switchToEdit = -1;
+    swObjToMove = -1;
+
+    QTileEdit::undo();
+
+    if (undoSwitches.isEmpty())
+        return;
+
+    QList<QDKSwitch> undoSw = undoSwitches.pop();
+
+    for (int i = currentSwitches.size()-1; i >= 0; i--)
+    {
+        currentSwitches[i].connectedTo.clear();
+        emit switchRemoved(i);
+    }
+
+    currentSwitches.clear();
+
+    for (int i = 0; i < undoSw.size(); i++)
+    {
+        currentSwitches.append(undoSw.at(i));
+        emit switchAdded(&currentSwitches[i]);
+    }
+    update();
+}
+
+void QDKEdit::createUndoData()
+{
+    QTileEdit::createUndoData();
+
+    QList<QDKSwitch> undoSw;
+
+    for (int i = 0; i < currentSwitches.size(); i++)
+        undoSw.append(currentSwitches.at(i));
+
+    undoSwitches.push(undoSw);
+}
+
+void QDKEdit::deleteLastUndo()
+{
+    QTileEdit::deleteLastUndo();
+
+    if (!undoSwitches.isEmpty())
+    {
+        QList<QDKSwitch> undoSw = undoSwitches.pop();
+        for (int i = undoSw.size()-1; i >= 0; i--)
+            undoSw[i].connectedTo.clear();
+        undoSw.clear();
+    }
+}
+
+void QDKEdit::clearUndoData()
+{
+    QTileEdit::clearUndoData();
+
+    while (!undoSwitches.isEmpty())
+    {
+        QList<QDKSwitch> undoSw = undoSwitches.pop();
+        for (int i = undoSw.size()-1; i >= 0; i--)
+            undoSw[i].connectedTo.clear();
+        undoSw.clear();
+    }
 }

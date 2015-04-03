@@ -163,6 +163,7 @@ private:
     int swObjToMove;
 
     QList<QDKSwitch> currentSwitches;
+    QStack<QList<QDKSwitch> > undoSwitches;
 
     bool romLoaded;
     bool transparentSprites;
@@ -181,6 +182,10 @@ signals:
 private slots:
     void checkForLargeTile(int x, int y, int drawnTile);
     void updateSprite(int num);
+    void undo();
+    void createUndoData();
+    void clearUndoData();
+    void deleteLastUndo();
     
 public slots:
     void changeLevel(int id);
