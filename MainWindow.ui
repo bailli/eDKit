@@ -894,6 +894,9 @@
     </property>
     <addaction name="actionOpen_ROM"/>
     <addaction name="actionSave_ROM"/>
+    <addaction name="separator"/>
+    <addaction name="actionExportLvl"/>
+    <addaction name="actionImportLvl"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -926,6 +929,16 @@
   <action name="actionEmpty_Level">
    <property name="text">
     <string>&amp;Clear Level</string>
+   </property>
+  </action>
+  <action name="actionExportLvl">
+   <property name="text">
+    <string>&amp;Export level</string>
+   </property>
+  </action>
+  <action name="actionImportLvl">
+   <property name="text">
+    <string>&amp;Import level</string>
    </property>
   </action>
  </widget>

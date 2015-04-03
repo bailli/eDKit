@@ -114,6 +114,8 @@ public:
     ~QDKEdit();
     bool loadAllLevels(QString romFile);
     bool saveAllLevels(QString romFile);
+    bool exportCurrentLevel(QString filename);
+    bool importLevel(QString filename);
     QString getLevelInfo();
     void fillSpriteNames();
     void fillTileNames();
@@ -125,7 +127,7 @@ private:
     void mousePressEvent(QMouseEvent *e);
     QByteArray LZSSDecompress(QDataStream *in, quint16 decompressedSize);
     QByteArray LZSSCompress(QByteArray *src);
-    bool readLevel(QFile *src, quint8 id);
+    bool readLevel(QFile *src, quint8 id, bool fromLvlFile = false);
     bool readSGBPalettes(QFile *src);
     bool recompressLevel(quint8 id);
     bool expandRawTilemap(quint8 id);

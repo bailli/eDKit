@@ -28,6 +28,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionSave_ROM, SIGNAL(triggered()), this, SLOT(SaveROM()));
     connect(ui->actionUndo, SIGNAL(triggered()), ui->lvlEdit, SLOT(undo()));
     connect(ui->actionEmpty_Level, SIGNAL(triggered()), ui->lvlEdit, SLOT(clearLevel()));
+    connect(ui->actionExportLvl, SIGNAL(triggered()), this, SLOT(ExportLvl()));
+    connect(ui->actionImportLvl, SIGNAL(triggered()), this, SLOT(ImportLvl()));
 
     connect(ui->lvlEdit, SIGNAL(musicChanged(int)), ui->cmbMusic, SLOT(setCurrentIndex(int)));
     connect(ui->lvlEdit, SIGNAL(paletteChanged(int)), ui->spbPalette, SLOT(setValue(int)));
@@ -36,7 +38,6 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->lvlEdit, SIGNAL(timeChanged(int)), ui->spbTime, SLOT(setValue(int)));
     connect(ui->lvlEdit, SIGNAL(dataChanged()), this, SLOT(enableSaveBtn()));
 
-    //connect(ui->spbLevel, SIGNAL(valueChanged(int)), ui->lvlEdit, SLOT(changeLevel(int)));
     connect(ui->spbLevel, SIGNAL(valueChanged(int)), this, SLOT(changeLevel(int)));
     connect(ui->cmbSize, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeSize(int)));
     connect(ui->cmbMusic, SIGNAL(currentIndexChanged(int)), ui->lvlEdit, SLOT(changeMusic(int)));
@@ -115,9 +116,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QShortcut* scSwitches = new QShortcut(QKeySequence(Qt::Key_Delete), ui->treSwitches);
     connect(scSwitches, SIGNAL(activated()), this, SLOT(delSwitchItem()));
-
-    //QShortcut* scUndo = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_U), ui->lvlEdit);
-    //connect(scUndo, SIGNAL(activated()), ui->lvlEdit, SLOT(undo()));
 
     changeLevel(0);
 }
@@ -298,6 +296,31 @@ void MainWindow::SaveROM()
     ui->lvlEdit->saveAllLevels(file);
 }
 
+void MainWindow::ExportLvl()
+{
+    if (ui->lvlEdit->isChanged())
+    {
+        QMessageBox::StandardButton result = QMessageBox::question(NULL, "Level data changed", "The level data has been changed. Save data?", QMessageBox::Yes | QMessageBox::No);
+        if (result == QMessageBox::Yes) // save changes
+            ui->lvlEdit->saveLevel();
+        else if (result != QMessageBox::No) // discard changes
+            qWarning() << "Unexpected return value form messagebox!";
+    }
+
+    QString file = QFileDialog::getSaveFileName(0, "Export level data", qApp->applicationDirPath(), "eDKit level data (*.lvl)");
+
+    if (!ui->lvlEdit->exportCurrentLevel(file))
+        qWarning() << "Level export failed";
+}
+
+void MainWindow::ImportLvl()
+{
+    QString file = QFileDialog::getOpenFileName(0, "Import level data", qApp->applicationDirPath(), "eDKit level data (*.lvl)");
+
+    if (!QFile::exists(file))
+        return;
+    ui->lvlEdit->importLevel(file);
+}
 
 void MainWindow::addNewSprite(QAction *action)
 {

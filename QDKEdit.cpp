@@ -315,7 +315,7 @@ bool QDKEdit::loadAllLevels(QString romFile)
     return allOkay;
 }
 
-bool QDKEdit::readLevel(QFile *src, quint8 id)
+bool QDKEdit::readLevel(QFile *src, quint8 id, bool fromLvlFile)
 {    
     QDataStream in(src);
     in.setByteOrder(QDataStream::LittleEndian);
@@ -323,7 +323,10 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
     quint8 byte, flag;
     quint16 address;
 
-    src->seek(levels[id].offset);
+    if (!fromLvlFile)
+        src->seek(levels[id].offset);
+    else
+        src->seek(1);
 
     in >> levels[id].size;
     in >> levels[id].music;
@@ -565,8 +568,17 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
 
     //copy the full raw data
     //no need to recompress if level data needs to be relocated
-    quint32 size = src->pos() - levels[id].offset;
-    src->seek(levels[id].offset);
+    quint32 size;
+    if (!fromLvlFile)
+    {
+        size = src->pos() - levels[id].offset;
+        src->seek(levels[id].offset);
+    }
+    else
+    {
+        size = src->size() - 1;
+        src->seek(1);
+    }
 
     //get palette number
     levels[id].fullData.clear();
@@ -576,7 +588,12 @@ bool QDKEdit::readLevel(QFile *src, quint8 id)
         levels[id].fullData.append(byte);
     }
 
-    if (id < 4)
+    if (fromLvlFile)
+    {
+        src->seek(0);
+        in >> byte;
+    }
+    else if (id < 4)
     {
         src->seek(PAL_ARCADE + (id * 6));
         in >> byte;
@@ -742,6 +759,57 @@ void QDKEdit::rebuildAddSpriteData(int id)
         lvl->rawAddSpriteData.clear();
         lvl->addSpriteData = false;
     }
+}
+
+bool QDKEdit::exportCurrentLevel(QString filename)
+{
+    saveLevel();
+    recompressLevel(currentLevel);
+
+    QFile file(filename);
+
+    file.open(QIODevice::WriteOnly);
+
+    QDataStream out(&file);
+    out.setByteOrder(QDataStream::LittleEndian);
+    // palette
+    quint8 pal = (quint8)(levels[currentLevel].paletteIndex - 0x180);
+    out << pal;
+
+    // write level data
+    if (file.write(levels[currentLevel].fullData) != levels[currentLevel].fullData.size())
+    {
+        qWarning() << QString("Writing level %1 failed! Aborting!").arg(currentLevel);
+        file.close();
+        return false;
+    }
+
+    file.close();
+
+    return true;
+}
+
+bool QDKEdit::importLevel(QString filename)
+{
+    QFile file(filename);
+
+    file.open(QIODevice::ReadOnly);
+    if (!file.exists())
+        return false;
+
+    switchToEdit = -1;
+    swObjToMove = -1;
+    spriteSelection = QRect();
+    spriteToMove = -1;
+
+    if (!readLevel(&file, currentLevel, true))
+        return false;
+
+    file.close();
+    dataIsChanged = false;
+    changeLevel(currentLevel);
+
+    return true;
 }
 
 bool QDKEdit::recompressLevel(quint8 id)
@@ -1540,7 +1608,7 @@ QByteArray QDKEdit::LZSSDecompress(QDataStream *in, quint16 decompressedSize)
 
     QByteArray decompressed;
 
-    quint8 byte, flags, len;
+    quint8 byte, flags, len, byte2;
     quint16 start;
     quint32 offset;
 
@@ -1561,18 +1629,22 @@ QByteArray QDKEdit::LZSSDecompress(QDataStream *in, quint16 decompressedSize)
                 (*in) >> len;
 
                 //start is actually 12bit and length only 4bit
-                start = byte + (0x100 * (len / 0x10));
+                byte2 = len;
+                start = (quint16)byte + (0x100 * ((quint16)len / 0x10));
                 len = len % 0x10;
 
                 len += 3;
                 if (start == 0)
-                    qDebug() << decompressed.size();
+                {
+                    qWarning() << QString("LZSSDecompress: something went wrong; start = 0");
+                    //qDebug() << decompressedSize << decompressed.size() << byte << byte2 << len;
+                    return decompressed;
+                }
                 offset = decompressed.size() - start;
                 //qDebug() << "start " << start << " length " << len;
 
                 for (int j = 0; j < len; j++)
                     decompressed.append((quint8)decompressed.at(offset+j));
-
             }
 
             flags >>= 1;
