@@ -8,6 +8,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QShortcut>
+#include <QProgressBar>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -53,6 +54,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->lvlEdit, SIGNAL(switchAdded(QDKSwitch*)), this, SLOT(addSwitch(QDKSwitch*)));
     connect(ui->lvlEdit, SIGNAL(switchUpdated(int,QDKSwitch*)), this, SLOT(updateSwitch(int,QDKSwitch*)));
     connect(ui->lvlEdit, SIGNAL(switchRemoved(int)), this, SLOT(removeSwitch(int)));
+
+    connect(ui->lvlEdit, SIGNAL(tilesVRAMchanged(int)), this, SLOT(updateVRAMtiles(int)));
+    connect(ui->lvlEdit, SIGNAL(spriteVRAMchanged(int)), this, SLOT(updateVRAMsprites(int)));
 
     if ((qApp->arguments().size() > 1) && (QFile::exists(qApp->arguments().at(1))))
     {
@@ -469,7 +473,7 @@ void MainWindow::addSwitchAtPos(int i, QDKSwitch *sw)
         default: state = "left";
     }
 
-    item->setText(0, QString("Switch %1 (%2) at %3x%4").arg(ui->treSwitches->topLevelItemCount()).arg(state).arg(sw->x).arg(sw->y));
+    item->setText(0, QString("Switch %1 (%2) at %3x%4").arg(i).arg(state).arg(sw->x).arg(sw->y));
 
     for (int i = 0; i < sw->connectedTo.size(); i++)
     {
@@ -538,4 +542,55 @@ void MainWindow::delSwitchItem()
 void MainWindow::enableSaveBtn()
 {
     ui->btnWrite->setEnabled(true);
+}
+
+void MainWindow::updateVRAMtiles(int tiles)
+{
+    if (tiles <= 80)
+    {
+        ui->barVRAMtiles->setRange(0, 80);
+        ui->barVRAMtiles->setValue(tiles);
+        QPalette p = ui->barVRAMtiles->palette();
+        p.setColor(QPalette::Highlight, Qt::green);
+        ui->barVRAMtiles->setPalette(p);
+    }
+    else if (tiles < (256 - ui->barVRAMsprites->value()) + 80)
+    {
+        ui->barVRAMtiles->setRange(0, (256 - ui->barVRAMsprites->value()) + 80);
+        ui->barVRAMtiles->setValue(tiles);
+        QPalette p = ui->barVRAMtiles->palette();
+        p.setColor(QPalette::Highlight, QColor(0xFF, 0xA0, 0x00));
+        ui->barVRAMtiles->setPalette(p);
+    }
+    else
+    {
+        ui->barVRAMtiles->setRange(0, 512);
+        ui->barVRAMtiles->setValue(tiles);
+        QPalette p = ui->barVRAMtiles->palette();
+        p.setColor(QPalette::Highlight, Qt::red);
+        ui->barVRAMtiles->setPalette(p);
+    }
+}
+
+void MainWindow::updateVRAMsprites(int sprites)
+{
+    if (sprites <= 256)
+    {
+        ui->barVRAMsprites->setRange(0, 256);
+        ui->barVRAMsprites->setValue(sprites);
+        QPalette p = ui->barVRAMsprites->palette();
+        p.setColor(QPalette::Highlight, Qt::green);
+        ui->barVRAMsprites->setPalette(p);
+    }
+    else
+    {
+        ui->barVRAMsprites->setRange(0, 512);
+        ui->barVRAMsprites->setValue(sprites);
+        QPalette p = ui->barVRAMsprites->palette();
+        p.setColor(QPalette::Highlight, Qt::red);
+        ui->barVRAMsprites->setPalette(p);
+    }
+
+    if (ui->barVRAMtiles->value() > 80)
+        updateVRAMtiles(ui->barVRAMtiles->value());
 }

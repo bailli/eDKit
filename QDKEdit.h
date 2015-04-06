@@ -36,6 +36,11 @@
 // palettes for all other levels
 
 // BGP depends on tileset asm @ 0E9D
+#define TILE_INDEX_TABLE 0x60E5
+#define ADDITIONAL_TILES_TABLE 0x30E55
+
+#define VRAM_TILES 0x50
+#define VRAM_SPRITES 0x100
 
 #define ELEVATOR_TABLE 0x30F77
 class QMouseEvent;
@@ -103,6 +108,8 @@ struct QTileInfo
     quint8 setSpecific;
     quint16 additionalTilesAt;
     quint32 romOffset;
+    QList<int> needsTiles;
+    quint8 projectileTileCount;
     bool compressed;
 };
 
@@ -146,6 +153,8 @@ private:
     quint8 getSpriteDefaultFlag(int id);
     void rebuildAddSpriteData(int id);
     void rebuildSwitchData(int id);
+    quint16 vramTiles;
+    quint16 vramSprites;
 
     QDKLevel levels[MAX_LEVEL_ID];
     QImage tilesets[MAX_TILESETS];
@@ -180,6 +189,8 @@ signals:
     void switchAdded(QDKSwitch *sw);
     void switchRemoved(int i);
     void switchUpdated(int i, QDKSwitch *sw);
+    void tilesVRAMchanged(int used);
+    void spriteVRAMchanged(int used);
 
 private slots:
     void checkForLargeTile(int x, int y, int drawnTile);
@@ -188,6 +199,8 @@ private slots:
     void createUndoData();
     void clearUndoData();
     void deleteLastUndo();
+    bool calcVRAMusageOld();
+    bool calcVRAMusage();
     
 public slots:
     void changeLevel(int id);

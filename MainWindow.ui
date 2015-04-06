@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>860</width>
-    <height>655</height>
+    <height>648</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -356,9 +356,9 @@
     <property name="geometry">
      <rect>
       <x>430</x>
-      <y>470</y>
-      <width>422</width>
-      <height>161</height>
+      <y>467</y>
+      <width>421</width>
+      <height>155</height>
      </rect>
     </property>
     <property name="title">
@@ -395,13 +395,13 @@
        </property>
       </spacer>
      </item>
-     <item row="0" column="3" colspan="2">
+     <item row="0" column="3" colspan="3">
       <widget class="QPushButton" name="btnWrite">
        <property name="enabled">
         <bool>false</bool>
        </property>
        <property name="text">
-        <string>Save level data</string>
+        <string>Save current level</string>
        </property>
       </widget>
      </item>
@@ -454,14 +454,14 @@
        </property>
       </spacer>
      </item>
-     <item row="1" column="4">
+     <item row="1" column="4" colspan="2">
       <widget class="QLabel" name="label_5">
        <property name="text">
         <string>Time (sec)</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="5">
+     <item row="1" column="6">
       <widget class="QSpinBox" name="spbTime">
        <property name="maximum">
         <number>999</number>
@@ -682,7 +682,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="5">
+     <item row="2" column="6">
       <widget class="QSpinBox" name="spbPalette">
        <property name="minimum">
         <number>384</number>
@@ -871,6 +871,32 @@
          <string>(21) Giant DK Battle</string>
         </property>
        </item>
+      </widget>
+     </item>
+     <item row="3" column="3" colspan="2">
+      <widget class="QProgressBar" name="barVRAMtiles">
+       <property name="maximum">
+        <number>236</number>
+       </property>
+       <property name="value">
+        <number>24</number>
+       </property>
+       <property name="format">
+        <string>Tiles %v</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="5" colspan="2">
+      <widget class="QProgressBar" name="barVRAMsprites">
+       <property name="maximum">
+        <number>256</number>
+       </property>
+       <property name="value">
+        <number>24</number>
+       </property>
+       <property name="format">
+        <string>Sprites %v</string>
+       </property>
       </widget>
      </item>
     </layout>

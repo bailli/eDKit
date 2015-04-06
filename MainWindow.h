@@ -51,6 +51,8 @@ private slots:
     void on_spbRAW_valueChanged(int arg1);
     void on_treSwitches_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *);
     void delSwitchItem();
+    void updateVRAMtiles(int tiles);
+    void updateVRAMsprites(int sprites);
 
 private:
     Ui::MainWindow *ui;

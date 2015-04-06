@@ -43,7 +43,7 @@ bool QDKEdit::isSprite[] = {
 
 
 QDKEdit::QDKEdit(QWidget *parent) :
-    QTileEdit(parent), switchMode(false), switchToEdit(-1), romLoaded(false)
+    QTileEdit(parent), switchMode(false), switchToEdit(-1), romLoaded(false), vramTiles(0), vramSprites(0)
 {
     currentLevel = -1;
     dataIsChanged = false;
@@ -89,6 +89,7 @@ QDKEdit::QDKEdit(QWidget *parent) :
     getMouse(true);
     connect(this, SIGNAL(singleTileChanged(int,int,int)), this, SLOT(checkForLargeTile(int,int,int)));
     connect(this, SIGNAL(flagByteChanged(int)), this, SLOT(updateSprite(int)));
+    connect(this, SIGNAL(dataChanged()), this, SLOT(calcVRAMusage()));
 }
 
 QDKEdit::~QDKEdit()
@@ -1145,10 +1146,12 @@ bool QDKEdit::getTileInfo(QFile *src)
     for (int i = 0; i < 255; i++)
     {
         // rombank 0x01 offset 0x60E5 is a table with pointers for all tiles
-        src->seek(0x60E5 + 2*i);
+        src->seek(TILE_INDEX_TABLE + 2*i);
         in >> pointer;
 
         tiles[i].setSpecific = false;
+        tiles[i].type = 0;
+        tiles[i].projectileTileCount = 0;
         tilesCount = 0;
 
         // the pointer points to some meta data for every "tile"
@@ -1186,21 +1189,48 @@ bool QDKEdit::getTileInfo(QFile *src)
             in >> tilesCount;
             tiles[i].type = 2;
 
+            // check for projectile sprites
+            // sum values from pointer+3 and pointer+13
+            if (tilesCount != 0)
+            {
+                in >> byte;
+                if (byte)
+                {
+                    tiles[i].projectileTileCount = byte;
+                    src->seek(pointer+13);
+                    in >> byte;
+                    tiles[i].projectileTileCount += byte;
+                }
+            }
+
             // another exception...
             if ((i == 0x9A) || (i == 0x8A) || (i == 0x9D) || (i == 0x9E) || (i == 0x54) || (i == 0x43) || (i == 0x79) || (i == 0xAF) || (i == 0x53) || (i == 0x65))
             {
                 src->seek(pointer+0xD);
                 in >> byte;
                 if (byte >= tilesCount)
-                    tilesCount = 0;
-                else
-                    tilesCount -= byte;
+                    tilesCount = byte;
+                //else
+                //    tilesCount -= byte;
+                // this results in wrong tilesCount for umbrella etc.
+                // but is need for compression check; fix see below
             }
         }
 
+        if (tilesCount == 0)
+        {
+            // check again...
+            src->seek(pointer+3);
+            in >> tilesCount;
+            tiles[i].type = 3;
+        }
 
         // which tiles are compressed and which are not? if tilesCount >= 4 ???
         tiles[i].compressed = (tilesCount >= 4);
+
+        // exception for these tiles (see above)
+        if ((i == 0x9A) || (i == 0x8A) || (i == 0x9D) || (i == 0x9E) || (i == 0x54) || (i == 0x43) || (i == 0x79) || (i == 0xAF) || (i == 0x53) || (i == 0x65))
+            tiles[i].compressed = ((tilesCount - byte) >= 4);
 
         // get data needed for super tiles
         //tiles[i].count = tilesCount;
@@ -1252,7 +1282,7 @@ bool QDKEdit::getTileInfo(QFile *src)
             if (i == 0x7F)
             {
                 tiles[i].romOffset = 0x106F0;
-                tiles[i].fullCount = 16;
+                tiles[i].fullCount = 0x50;
             }
 
             continue;
@@ -1267,6 +1297,31 @@ bool QDKEdit::getTileInfo(QFile *src)
 
         tiles[i].setSpecific = true;
         tiles[i].romOffset = offset;
+    }
+
+    tiles[0xFF].fullCount = 1;
+    tiles[0xFF].w = 1;
+    tiles[0xFF].h = 1;
+    tiles[0xFF].count = 1;
+    tiles[0xFF].compressed = false;
+
+    tiles[0x54].fullCount = 4;
+
+    // get supporting tiles from table @ ADDITIONAL_TILES_TABLE
+    quint8 count;
+    quint8 tile;
+
+    src->seek(ADDITIONAL_TILES_TABLE);
+    in >> count;
+    while (count != (quint8)0xFF)
+    {
+        in >> tile;
+        for (int i = 0; i < count; i++)
+        {
+            in >> byte;
+            tiles[tile].needsTiles.append(byte);
+        }
+        in >> count;
     }
 
     return true;
@@ -1934,6 +1989,8 @@ void QDKEdit::addSprite(int id)
 
     sprites.append(sprite);
     emit spriteAdded(spriteNumToString(id), id);
+    dataIsChanged = true;
+    emit dataChanged();
     update();
 }
 
@@ -2052,15 +2109,15 @@ void QDKEdit::fillTileNames()
     tileNames.insert(0x47, "sprite (crushing stone)");
     tileNames.insert(0x48, "sprite (octopus)");
     tileNames.insert(0x49, "broken ladder");
-    tileNames.insert(0x4a, "pole tip");
+    tileNames.insert(0x4a, "sparking pole tip");
     tileNames.insert(0x4b, "fake exit");
-    tileNames.insert(0x4c, "ground");
+    tileNames.insert(0x4c, "ground with ghost?");
     tileNames.insert(0x4d, "sprite (squid)");
     tileNames.insert(0x4e, "sprite (fish)");
     tileNames.insert(0x4f, "sprite (bat)");
     tileNames.insert(0x50, "sprite (walrus)");
     tileNames.insert(0x51, "winning ladder");
-    tileNames.insert(0x52, "ground");
+    tileNames.insert(0x52, "ground same as 0x4c ?");
     tileNames.insert(0x53, "umbrella");
     tileNames.insert(0x54, "sprite (board)");
     tileNames.insert(0x55, "ground");
@@ -2400,6 +2457,10 @@ void QDKEdit::changeLevel(int id)
         currentSwitches.append(levels[currentLevel].switches.at(i));
         emit switchAdded(&levels[currentLevel].switches[i]);
     }
+
+    vramSprites = 0;
+    vramTiles = 0;
+    calcVRAMusage();
 
     update();
 
@@ -3201,4 +3262,298 @@ void QDKEdit::clearLevel()
     currentSwitches.clear();
 
     QTileEdit::clearLevel();
+}
+
+bool QDKEdit::calcVRAMusageOld()
+{
+    quint16 tileCount = 0;
+    quint16 spriteCount = 0;
+
+    // max tiles seems to be 80
+    // uses sprite space if too many tiles and sprite space still empty
+
+    // empty tile is omit on purpose
+
+    for (int i = 0; i < 255; i++)
+        for (int j = 0; j < lvlData.size(); j+=2)
+            if ((lvlData[j] == (quint8)i) && (lvlData[j+1] == (quint8)0x00))
+            {
+                // key, exit, fake exit, expandle ground/ladder, placeable block/spring, super hammer
+                // count as "sprites" - earliest VRAM pos seems to be 0x8800
+                // this may results in unused tiles before 0x8800 in VRAM
+                if ((i == 0x79) || (i == 0x9E) || (i == 0x4B) || (i == 0xBB) ||
+                    (i == 0xBC) || (i == 0x75) || (i == 0x77) || (i == 0xC4))
+                    spriteCount += tiles[i].fullCount;
+                else
+                    tileCount += tiles[i].fullCount;
+
+                // tiles which include some sprites/animations
+                // elevator platform
+                if ((i == 0x70) || (i == 0x72))
+                    spriteCount += 4;
+
+                // cannons up projectile
+                if ((i == 0x6B) || (i == 0x6D))
+                    spriteCount += 14;
+
+                // cannons angled projectile
+                if ((i == 0x6A) || (i == 0x6C))
+                    spriteCount += 12;
+
+                // cannons sideways, turrets projectile
+                if ((i == 0x68) || (i == 0x69) || (i == 0xB2) || (i == 0xB3) || (i == 0xB4) || (i == 0xB5))
+                    spriteCount += 8;
+
+                // spark from high wire
+                if (i == 0x4A)
+                    spriteCount += 6;
+
+                // mario sprites with super hammer
+                if (i == 0xC4)
+                    spriteCount += 46;
+
+                // seed from spitting plant
+                if ((i == 0x40) || (i == 0x41))
+                    spriteCount += 1;
+
+                // bird from nest
+                if ((i == 0x67) || (i == 0xB9))
+                    spriteCount += 12;
+
+                break;
+            }
+
+    // max sprites seems to be 0x100
+    for (int i = 0; i < 255; i++)
+        for (int j = 0; j < sprites.size(); j++)
+            if (sprites.at(j).id == i)
+            {
+                // skip my pseudo sprites for the elevator properties
+                if ((i == 0x70) || (i == 0x72))
+                    continue;
+
+                spriteCount += tiles[i].fullCount;
+
+                // some sprites mostly DK have a wrong fullCount value
+                // currently tested until lvl 2-5
+
+                // mario hammer animations
+                if (i == 0x57)
+                    spriteCount += 46;
+                // DK fireballs
+                if (i == 0x5E)
+                    spriteCount += 16;
+                // DK barrels
+                if (i == 0x6E)
+                    spriteCount += 24;
+                // DK lvl 0-2
+                if (i == 0x44)
+                    spriteCount += 12;
+                // moving board
+                if (i == 0x54)
+                    spriteCount += 3;
+
+                break;
+            }
+
+    if (tileCount != vramTiles)
+    {
+        vramTiles = tileCount;
+        emit tilesVRAMchanged(vramTiles);
+    }
+
+    if (spriteCount != vramSprites)
+    {
+        vramSprites = spriteCount;
+        emit spriteVRAMchanged(vramSprites);
+    }
+
+    //from getLevelInfo for archive purposes:
+    /*
+    quint16 tileCount = 0;
+    quint16 spriteCount = 0;
+    bool elevator = false;
+    bool hammer = false;
+    bool spark = false;
+    bool plant = false;
+    bool nest = false;
+
+    //max tiles seems to be 80
+    //uses sprite space if too many tiles and sprite space still empty
+    for (int i = 0; i < 255; i++)
+        for (int j = 0; j < levels[id].rawTilemap.size(); j++)
+            if (levels[id].rawTilemap[j] == (quint8)i)
+            {
+                //str += QString("Tile %1; count: %2\n").arg(tileNumToString(i)).arg(tiles[i].fullCount);
+                if ((i == 0x79) || (i == 0x9E) || (i == 0x4B) || (i == 0xBB) || (i == 0xBC) || (i == 0x75) || (i == 0x77) || (i == 0xC4))
+                    spriteCount += tiles[i].fullCount;
+                else
+                    tileCount += tiles[i].fullCount;
+
+                if ((i == 0x6B) || (i == 0x6D))
+                    spriteCount += 14;
+
+                if ((i == 0x6A) || (i == 0x6C))
+                    spriteCount += 12;
+
+                if ((i == 0x68) || (i == 0x69) || (i == 0xB2) || (i == 0xB3) || (i == 0xB4) || (i == 0xB5))
+                    spriteCount += 8;
+
+                if ((i == 0x70) || (i == 0x72))
+                    elevator = true;
+
+                if (i == 0x4A)
+                    spark = true;
+
+                if (i == 0xC4)
+                    hammer = true;
+
+                if ((i == 0x40) || (i == 0x41))
+                    plant = true;
+
+                if ((i == 0x67) || (i == 0xB9))
+                    nest = true;
+
+                break;
+            }
+
+    // max sprites seems to be 0xFF
+    for (int i = 0; i < 255; i++)
+        for (int j = 0; j < levels[id].sprites.size(); j++)
+            if (levels[id].sprites.at(j).id == i)
+            {
+                if ((i == 0x70) || (i == 0x72))
+                    continue;
+
+                spriteCount += tiles[i].fullCount;
+                //str += QString("Sprite %1; count: %2\n").arg(spriteNumToString(i)).arg(tiles[i].fullCount);
+                if (i == 0x57)
+                    spriteCount += 46;
+                if (i == 0x5E)
+                    spriteCount += 16;
+                if (i == 0x6E)
+                    spriteCount += 24;
+                if (i == 0x44)
+                    spriteCount += 12;
+                //if (i == 0x54)
+//                    spriteCount += 3;
+                // this seems to be tileset depended
+                // it is necessary for lvl 9
+                // but wrong for lvl 12
+                // += 12 for lvl 13
+                // probably just old data because earliest exit pos is at 0x8800
+                //if (i == 0x98)
+                //    spriteCount += 16;
+                break;
+            }
+
+    if (elevator)
+    {
+        str += QString("Sprite 0x74; count: %1\n").arg(4);
+        spriteCount += 4;
+    }
+    if (hammer)
+    {
+        str += QString("Sprite super hammer; count: %1\n").arg(46);
+        spriteCount += 46;
+    }
+    if (spark)
+    {
+        str += QString("Sprite 0x3E; count: %1\n").arg(6);
+        spriteCount += 6;
+    }
+    if (plant)
+    {
+        str += QString("Sprite plant; count: %1\n").arg(1);
+        spriteCount += 1;
+    }
+    if (nest)
+    {
+        str += QString("Sprite nest; count: %1\n").arg(12);
+        spriteCount += 12;
+    }
+    // Level 1-7 (10) diff of 0x18 (some kind of flame?!)
+    // Door/Key earliest pos = 0x8800 ? (lvl14)
+    // more like "tile sprites" earliest pos 0x8800
+    // then flame in lvl10 might be garbage - probably yes!
+
+    str += QString("Full VRAM tiles: %1; sprites: %2: sum %3\n").arg(tileCount).arg(spriteCount).arg(tileCount+spriteCount);
+*/
+}
+
+bool QDKEdit::calcVRAMusage()
+{
+    quint16 tileCount = 0;
+    quint16 spriteCount = 0;
+
+    bool elevator = false;
+    QSet<quint8> neededTiles;
+
+    // max tiles seems to be 80
+    // uses sprite space if too many tiles and sprite space still empty
+
+    // empty tile is omit on purpose
+
+    for (int i = 0; i < 255; i++)
+        for (int j = 0; j < lvlData.size(); j+=2)
+            if ((lvlData[j] == (quint8)i) && (lvlData[j+1] == (quint8)0x00))
+            {
+                // key, exit, fake exit, expandle ground/ladder, placeable block/spring, super hammer
+                // count as "sprites" - earliest VRAM pos seems to be 0x8800
+                // this may results in unused tiles before 0x8800 in VRAM
+                if ((i == 0x79) || (i == 0x9E) || (i == 0x4B) || (i == 0xBB) ||
+                    (i == 0xBC) || (i == 0x75) || (i == 0x77) || (i == 0xC4))
+                    spriteCount += tiles[i].fullCount;
+                else
+                    tileCount += tiles[i].fullCount;
+
+                if (elevator && ((i == 0x70) || (i == 0x71) || (i == 0x72) || (i == 0x73)))
+                    continue;
+
+                if ((i == 0x70) || (i == 0x71) || (i == 0x72) || (i == 0x73))
+                    elevator = true;
+
+                if (!tiles[i].needsTiles.isEmpty())
+                    for (int t = 0; t < tiles[i].needsTiles.size(); t++)
+                        neededTiles << tiles[i].needsTiles.at(t);
+
+                if (tiles[i].projectileTileCount)
+                    spriteCount += tiles[i].projectileTileCount;
+
+                break;
+            }
+
+    // max sprites seems to be 0x100
+    for (int i = 0; i < 255; i++)
+        for (int j = 0; j < sprites.size(); j++)
+            if (sprites.at(j).id == i)
+            {
+                // skip my pseudo sprites for the elevator properties
+                if ((i == 0x70) || (i == 0x72))
+                    continue;
+
+                spriteCount += tiles[i].fullCount;
+
+                if (!tiles[i].needsTiles.isEmpty())
+                    for (int t = 0; t < tiles[i].needsTiles.size(); t++)
+                        spriteCount += tiles[tiles[i].needsTiles.at(t)].fullCount;
+
+                break;
+            }
+
+    QSet<quint8>::iterator i;
+    for (i = neededTiles.begin(); i != neededTiles.end(); ++i)
+        spriteCount += tiles[*i].fullCount;
+
+    if (tileCount != vramTiles)
+    {
+        vramTiles = tileCount;
+        emit tilesVRAMchanged(vramTiles);
+    }
+
+    if (spriteCount != vramSprites)
+    {
+        vramSprites = spriteCount;
+        emit spriteVRAMchanged(vramSprites);
+    }
 }
