@@ -564,7 +564,7 @@ void MainWindow::updateVRAMtiles(int tiles)
     }
     else
     {
-        ui->barVRAMtiles->setRange(0, 512);
+        ui->barVRAMtiles->setRange(0, tiles);
         ui->barVRAMtiles->setValue(tiles);
         QPalette p = ui->barVRAMtiles->palette();
         p.setColor(QPalette::Highlight, Qt::red);
@@ -584,7 +584,7 @@ void MainWindow::updateVRAMsprites(int sprites)
     }
     else
     {
-        ui->barVRAMsprites->setRange(0, 512);
+        ui->barVRAMsprites->setRange(0, sprites);
         ui->barVRAMsprites->setValue(sprites);
         QPalette p = ui->barVRAMsprites->palette();
         p.setColor(QPalette::Highlight, Qt::red);
