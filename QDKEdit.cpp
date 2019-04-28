@@ -983,7 +983,7 @@ bool QDKEdit::updateRawTilemap(quint8 id)
         if ((quint8)levels[id].displayTilemap[i+1] == 0x00)
             levels[id].rawTilemap.append((quint8)levels[id].displayTilemap[i]);
         else
-            levels[id].rawTilemap.append(QChar(0xFF));
+            levels[id].rawTilemap.append((quint8)0xFF);
     }
 
     return true;
